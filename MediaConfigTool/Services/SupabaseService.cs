@@ -7,7 +7,7 @@ using MediaConfigTool.Models;
 
 namespace MediaConfigTool.Services
 {
-    internal class SupabaseService
+    public class SupabaseService
     {
         private readonly HttpClient _httpClient;
 
@@ -22,7 +22,7 @@ namespace MediaConfigTool.Services
                 new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", ApiKey);
                     }
 
-        public async Task<List<Tenant>> GetTenantAsync()
+        public async Task<List<Tenant>> GetTenantsAsync()
         {
             try
             {
