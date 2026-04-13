@@ -134,7 +134,6 @@ namespace MediaConfigTool.ViewModels
         public async Task SelectFolderAsync(string folderPath)
         {
             SelectedFolder = folderPath;
-            CloseFolderPanel();
             await LoadMediaFilesAsync(folderPath);
         }
 

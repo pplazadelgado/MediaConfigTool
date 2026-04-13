@@ -30,6 +30,8 @@ namespace MediaConfigTool
 
         private async void FolderTree_Selected(object sender, RoutedEventArgs e)
         {
+            e.Handled = true;
+
             if (e.OriginalSource is TreeViewItem item &&
                 item.DataContext is FolderItem folder &&
                 DataContext is MainViewModel vm)
