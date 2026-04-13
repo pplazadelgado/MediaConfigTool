@@ -10,8 +10,9 @@ namespace MediaConfigTool.Services
     public class MediaFileService
     {
         private static readonly string[] SupportedExtensions = { ".jpg", ".jpeg", ".png" };
+        private readonly ExifService _exifService = new();
 
-        public List<MediaFile> GetMediaFiles(string folderPath)
+        public List<MediaFile> GetMediaFiles(string folderPath, string rootPath)
         {
             var result = new List<MediaFile>();
 
@@ -22,10 +23,15 @@ namespace MediaConfigTool.Services
                     var ext = Path.GetExtension(file).ToLowerInvariant();
                     if (Array.Exists(SupportedExtensions, e => e == ext))
                     {
+                        var (timestamp, orientation) = _exifService.ReadMetadata(file);
+
                         result.Add(new MediaFile
                         {
                             FileName = Path.GetFileName(file),
-                            FullPath = file
+                            FullPath = file,
+                            RelativePath = Path.GetRelativePath(rootPath, file),
+                            CaptureTimestamp = timestamp,
+                            Orientation = orientation
                         });
                     }
                 }

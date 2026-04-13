@@ -144,7 +144,7 @@ namespace MediaConfigTool.ViewModels
                 MediaFiles.Clear();
                 StatusMessage = "Scanning folder...";
 
-                var files = _mediaFileService.GetMediaFiles(folderPath);
+                var files = _mediaFileService.GetMediaFiles(folderPath, folderPath);
 
                 if (files.Count == 0)
                 {
