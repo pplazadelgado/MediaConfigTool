@@ -14,6 +14,6 @@ namespace MediaConfigTool.Models
         public int Total => Imported + Skipped + Failed;
 
         public string Summary => 
-            $"{Imported} imported, {Skipped} skipped, {Failed} failed of {Total} total.";;
+            $"{Imported} imported, {Skipped} skipped, {Failed} failed of {Total} total.";
     }
 }

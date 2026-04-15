@@ -1,8 +1,9 @@
-﻿using System.Windows;
+﻿using MediaConfigTool.Models;
+using MediaConfigTool.Services;
+using MediaConfigTool.ViewModels;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using MediaConfigTool.Models;
-using MediaConfigTool.ViewModels;
 
 namespace MediaConfigTool
 {
@@ -11,12 +12,20 @@ namespace MediaConfigTool
         public MainWindow()
         {
             InitializeComponent();
+            new AppPathsService().EnsureFolderExist();
+            DataContext = new MainViewModel();
         }
 
         private async void Window_Loaded(object sender, RoutedEventArgs e)
         {
             if (DataContext is MainViewModel vm)
                 await vm.LoadTenantsAsync();
+        }
+
+        private void MediaGallery_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (DataContext is MainViewModel vm && sender is ListView lv)
+                vm.OnSelectionChanged(lv.SelectedItems);
         }
 
         private void FolderTree_Expanded(object sender, RoutedEventArgs e)

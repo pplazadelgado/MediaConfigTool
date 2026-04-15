@@ -36,6 +36,10 @@ namespace MediaConfigTool.Services
                     }
                 }
             }
+            catch (UnauthorizedAccessException)
+            {
+                System.Diagnostics.Debug.WriteLine($"[MediaFileService] Access denied: {folderPath}");
+            }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[MediaFileService] {ex.Message}");

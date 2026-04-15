@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 using MediaConfigTool.Models;
+using System.Linq;
 
 namespace MediaConfigTool.Services
 {
@@ -22,35 +22,45 @@ namespace MediaConfigTool.Services
         /// Supports cancellation via CancellationToken.
         /// </summary>
         public async Task<ImportResult> ImportAsync(
-            IEnumerable<MediaFile> files,
-            string tenantId,
-            IProgress<string> progress = null,
-            CancellationToken  cancellationToken = default)
+     IEnumerable<MediaFile> files,
+     string tenantId,
+     string rootPath,
+     IProgress<string>? progress = null,
+     CancellationToken cancellationToken = default)
         {
             var result = new ImportResult();
+            var fileList = files.ToList();
 
-            foreach(var file in files)
+            progress?.Report("Preparing storage source...");
+            var storageSourceId = await _supabaseService.GetOrCreateStorageSourceAsync(tenantId, rootPath);
+
+            if (storageSourceId == null)
+            {
+                result.Failed += fileList.Count;
+                result.Errors.Add("Could not get or create local storage source. Import aborted.");
+                progress?.Report("Import failed: storage source unavailable.");
+                return result;
+            }
+
+            foreach (var file in fileList)
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
                 try
                 {
-                    progress?.Report($"Checking {file.FileName}....");
-
-                    //Step 1 - duplicate check 
-                    var exists = await _supabaseService.MediaAssetExistsAsync(tenantId, file.RelativePath);
-                    if(exists)
+                    // Usar IsImported que ya está marcado en la galería
+                    if (file.IsImported)
                     {
                         result.Skipped++;
                         progress?.Report($"Skipped (already exists): {file.FileName}");
                         continue;
                     }
 
-                    //Step 2 - insert media_asset
+                    // Insertar media_asset
                     progress?.Report($"Importing {file.FileName}...");
-                    var mediaAssitId = await _supabaseService.InsertMediaAssetAsync(file, tenantId);
+                    var mediaAssetId = await _supabaseService.InsertMediaAssetAsync(file, tenantId);
 
-                    if(mediaAssitId== null)
+                    if (mediaAssetId == null)
                     {
                         result.Failed++;
                         result.Errors.Add($"Failed to insert asset: {file.RelativePath}");
@@ -58,8 +68,9 @@ namespace MediaConfigTool.Services
                         continue;
                     }
 
-                    //Step 3 - insert media file_instance
-                    var instanceOk = await _supabaseService.InsertMediaFileInstanceAsync(mediaAssitId, file);
+                    // Insertar media_file_instance
+                    var instanceOk = await _supabaseService.InsertMediaFileInstanceAsync(
+                        mediaAssetId, storageSourceId, tenantId, file);
 
                     if (!instanceOk)
                     {
@@ -69,6 +80,7 @@ namespace MediaConfigTool.Services
                         continue;
                     }
 
+                    file.IsImported = true;
                     result.Imported++;
                     progress?.Report($"Imported: {file.FileName}");
                 }
@@ -85,6 +97,9 @@ namespace MediaConfigTool.Services
                     System.Diagnostics.Debug.WriteLine($"[ImportService] {ex.Message}");
                 }
             }
+
+            progress?.Report(result.Summary);
+            return result;
         }
     }
 }
