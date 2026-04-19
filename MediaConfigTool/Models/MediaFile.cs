@@ -13,6 +13,7 @@ namespace MediaConfigTool.Models
         public DateTime? CaptureTimestamp { get; set; }
         public int Orientation { get; set; } = 1;
         public BitmapImage? Thumbnail { get; set; }
+        public string? MediaAssetId {  get; set; }
 
         private bool _isImported;
         public bool IsImported

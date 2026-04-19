@@ -1,13 +1,15 @@
-﻿using System.Net.Http;
-using System.Net.Http.Json;
+﻿using MediaConfigTool;
+using MediaConfigTool.Models;
+using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
+using System.IO;
+using System.Net.Http;
+using System.Net.Http.Json;
+using System.Security.Policy;
 using System.Text;
 using System.Text.Json;
-using MediaConfigTool;
-using MediaConfigTool.Models;
-using System.Security.Cryptography.X509Certificates;
-using System.IO;
+using System.Text.Json.Serialization;
+using System.Threading.Tasks;
 
 namespace MediaConfigTool.Services
 {
@@ -37,7 +39,7 @@ namespace MediaConfigTool.Services
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[SupabaseService] {ex.Message}", ex);
+                _ = ex;
                 return new List<Tenant>();
             }
 
@@ -85,15 +87,9 @@ namespace MediaConfigTool.Services
 
                 var response = await _httpClient.SendAsync(request);
 
-                if (!response.IsSuccessStatusCode)
-                {
-                    var errorBody = await response.Content.ReadAsStringAsync();
-                    System.Diagnostics.Debug.WriteLine($"[SupabaseService] InsertMediaAsset HTTP {(int)response.StatusCode}: {errorBody}");
-                    response.EnsureSuccessStatusCode();
-                }
+                response.EnsureSuccessStatusCode();
 
                 var responseBody = await response.Content.ReadAsStringAsync();
-                System.Diagnostics.Debug.WriteLine($"[SupabaseService] InsertMediaAsset response: {responseBody}");
                 using var doc = JsonDocument.Parse(responseBody);
 
                 string? id = null;
@@ -269,15 +265,17 @@ namespace MediaConfigTool.Services
         }
 
 
-        public async Task<HashSet<string>> GetImportedRelativePathsAsync(string tenantId, IEnumerable<string> relativePaths)
+        public async Task<Dictionary<string, string>> GetImportedRelativePathsAsync(
+    string tenantId, IEnumerable<string> relativePaths)
         {
-            var result = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            // Returns: relative_path -> media_asset_id
+            var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
             try
             {
                 var url = $"{BaseUrl}/rest/v1/media_asset" +
                           $"?tenant_id=eq.{tenantId}" +
-                          $"&select=raw_metadata";
+                          $"&select=media_asset_id,raw_metadata";
 
                 var response = await _httpClient.GetAsync(url);
 
@@ -293,30 +291,33 @@ namespace MediaConfigTool.Services
 
                 foreach (var element in doc.RootElement.EnumerateArray())
                 {
-                    if (element.TryGetProperty("raw_metadata", out var meta))
+                    // Read media_asset_id
+                    if (!element.TryGetProperty("media_asset_id", out var assetIdEl)) continue;
+                    var assetId = assetIdEl.GetString();
+                    if (string.IsNullOrWhiteSpace(assetId)) continue;
+
+                    // Read raw_metadata (can be string or object)
+                    if (!element.TryGetProperty("raw_metadata", out var meta)) continue;
+
+                    JsonElement metaObj;
+                    if (meta.ValueKind == JsonValueKind.String)
                     {
-                        // raw_metadata puede venir como string JSON o como objeto
-                        JsonElement metaObj;
+                        var metaStr = meta.GetString();
+                        if (string.IsNullOrWhiteSpace(metaStr)) continue;
+                        using var innerDoc = JsonDocument.Parse(metaStr);
+                        metaObj = innerDoc.RootElement.Clone();
+                    }
+                    else if (meta.ValueKind == JsonValueKind.Object)
+                    {
+                        metaObj = meta;
+                    }
+                    else continue;
 
-                        if (meta.ValueKind == JsonValueKind.String)
-                        {
-                            var metaStr = meta.GetString();
-                            if (string.IsNullOrWhiteSpace(metaStr)) continue;
-                            using var innerDoc = JsonDocument.Parse(metaStr);
-                            metaObj = innerDoc.RootElement.Clone();
-                        }
-                        else if (meta.ValueKind == JsonValueKind.Object)
-                        {
-                            metaObj = meta;
-                        }
-                        else continue;
-
-                        if (metaObj.TryGetProperty("relative_path", out var relPath))
-                        {
-                            var path = relPath.GetString();
-                            if (!string.IsNullOrWhiteSpace(path))
-                                result.Add(path);
-                        }
+                    if (metaObj.TryGetProperty("relative_path", out var relPath))
+                    {
+                        var path = relPath.GetString();
+                        if (!string.IsNullOrWhiteSpace(path))
+                            result[path] = assetId;
                     }
                 }
             }
@@ -326,6 +327,240 @@ namespace MediaConfigTool.Services
             }
 
             return result;
+        }
+
+        public async Task<List<Location>> GetLocationAsync(string tenantId)
+        {
+            try
+            {
+                var url = $"{BaseUrl}/rest/v1/location?select=location_id,location_name,location_type,tenant_id&tenant_id=eq.{tenantId}&order=location_name.asc";
+
+                var result = await _httpClient.GetFromJsonAsync<List<Location>>(url);
+                return result ?? new List<Location>();
+            }
+            catch(Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SupabaseService] GetLocationAsync: {ex.Message}");
+                return new List<Location>();
+            }
+        }
+
+        public async Task<bool> MediaLocationExistsAsync(string mediaAssetId, string locationId)
+        {
+            try
+            {
+                var url = $"{BaseUrl}/rest/v1/media_location" +
+                  $"?media_asset_id=eq.{mediaAssetId}" +
+                  $"&location_id=eq.{locationId}" +
+                  $"&select=media_asset_id" +
+                  $"&limit=1";
+
+                var response = await _httpClient.GetAsync(url);
+                if (!response.IsSuccessStatusCode) return false;
+
+                var body = await response.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(body);
+                return doc.RootElement.ValueKind == JsonValueKind.Array
+                    && doc.RootElement.GetArrayLength() > 0;
+            }
+            catch(Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SupabaseService] MediaLocationExistsAsync {ex.Message}");
+                return false;
+            }
+        }
+
+        public async Task<bool> InsertMediaLocationAsync(string mediaAssetId, string locationId,string tenantId)
+        {
+            var now = DateTime.UtcNow.ToString("o");
+            var payload = new
+            {
+                media_asset_id = mediaAssetId,
+                location_id = locationId,
+                relationship_type = "captured_at",
+                source_type = "user_assigned",
+                tenant_id = tenantId,
+                created_at = now
+            };
+
+            var json = JsonSerializer.Serialize(payload);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            var request = new HttpRequestMessage(HttpMethod.Post, $"{BaseUrl}/rest/v1/media_location");
+            request.Headers.Add("Prefer", "return=minimal");
+            request.Content = content;
+
+            var response = await _httpClient.SendAsync(request);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorBody = await response.Content.ReadAsStringAsync();
+                throw new Exception($"HTTP {(int)response.StatusCode}: {errorBody}");
+            }
+            return true;
+        }
+
+        public async Task<List<Person>> GetPersonAsync(string tenantId)
+        {
+            try
+            {
+                var url = $"{BaseUrl}/rest/v1/person" +
+                 $"?select=person_id,display_name,tenant_id" +
+                 $"&tenant_id=eq.{tenantId}" +
+                 $"&order=display_name.asc";
+
+                var result = await _httpClient.GetFromJsonAsync<List<Person>>(url);
+
+                return result ?? new List<Person>();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SupabaseService] GetPersonsAsync: {ex.Message}");
+                return new List<Person>();
+            }
+        }
+
+        public async Task<List<Event>> GetEventsAsync(string tenantId)
+        {
+            try
+            {
+                var url = $"{BaseUrl}/rest/v1/event" +
+                  $"?select=event_id,event_name,tenant_id" +
+                  $"&tenant_id=eq.{tenantId}" +
+                  $"&order=event_name.asc";
+
+                var result = await _httpClient.GetFromJsonAsync<List<Event>>(url);
+                return result ?? new List<Event>();
+            }
+            catch(Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SupabaseService] GetEventsAsync: {ex.Message}");
+                return new List<Event>();
+            }
+        }
+
+        public async Task<List<Tag>> GetTagsAsync(string tenantId)
+        {
+            try
+            {
+                var url = $"{BaseUrl}/rest/v1/tag" +
+                  $"?select=tag_id,tag_name,tenant_id" +
+                  $"&tenant_id=eq.{tenantId}" +
+                  $"&order=tag_name.asc";
+
+                var result = await _httpClient.GetFromJsonAsync<List<Tag>>(url);
+                return result ?? new List<Tag>();
+            }
+            catch(Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SupabaseService] GetTagsAsync: {ex.Message}");
+                return new List<Tag>();
+            }
+        }
+
+        public async Task<bool> AssingPersonAsync( string mediaAssetId, string personId, string tenantId)
+        {
+            try
+            {
+                var now = DateTime.UtcNow.ToString("o");
+                var payload = new
+                {
+                    media_asset_id = mediaAssetId,
+                    person_id = personId,
+                    source_type = "user_assigned",
+                    tenant_id = tenantId,
+                    created_at = now
+                };
+
+                var json = JsonSerializer.Serialize(payload);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+                var request = new HttpRequestMessage(HttpMethod.Post, $"{BaseUrl}/rest/v1/media_person");
+                request.Headers.Add("Preder", "return=minimal");
+                request.Content = content;
+
+                var response = await _httpClient.SendAsync(request);
+                if (!response.IsSuccessStatusCode)
+                {
+                    var error = await response.Content.ReadAsStringAsync();
+                    throw new Exception($"HTTP {(int)response.StatusCode}: {error}");
+                }
+                return true;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SupabaseService] AssignPersonAsync: {ex.Message}");
+                return false;
+            }
+        }
+
+        public async Task<bool> AssingEventAsync( string mediaAssetId, string eventId, string tenantId)
+        {
+            try
+            {
+                var now = DateTime.UtcNow.ToString("o");
+                var payload = new
+                {
+                    media_asset_id = mediaAssetId,
+                    event_id = eventId,
+                    relationship_type = "belongs_to",
+                    tenant_id = tenantId,
+                    created_at = now
+                };
+
+                var json = JsonSerializer.Serialize(payload);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+                var request = new HttpRequestMessage(HttpMethod.Post, $"{BaseUrl}/rest/v1/media_event");
+                request.Headers.Add("Prefer", "return=minimal");
+                request.Content = content;
+
+                var response = await _httpClient.SendAsync(request);
+                if (!response.IsSuccessStatusCode)
+                {
+                    var error = await response.Content.ReadAsStreamAsync();
+                    throw new Exception($"HTTP {(int)response.StatusCode}: {error}");
+                }
+                return true;
+            }
+            catch(Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SupabaseService] AssignEventAsync: {ex.Message}");
+                return false;
+            }
+        }
+
+        public async Task<bool> AssingTagAsync(string mediaAssetId, string tagId, string tenantId)
+        {
+            try
+            {
+                var now = DateTime.UtcNow.ToString("o");
+                var payload = new
+                {
+                    media_asset_id = mediaAssetId,
+                    tag_id = tagId,
+                    source_type = "user_assigned",
+                    tenant_id = tenantId,
+                    created_at = now
+                };
+
+                var json = JsonSerializer.Serialize(payload);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+                var request = new HttpRequestMessage(HttpMethod.Post, $"{BaseUrl}/rest/v1/media_tag");
+                request.Headers.Add("Prefer", "return=minimal");
+                request.Content = content;
+
+                var response = await _httpClient.SendAsync(request);
+                if (!response.IsSuccessStatusCode)
+                {
+                    var error = await response.Content.ReadAsStringAsync();
+                    throw new Exception($"HTTP {(int)response.StatusCode}: {error}");
+                }
+                return true;
+            }
+            catch(Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SupabaseService] AssignTagAsync: {ex.Message}");
+                return false;
+            }
         }
     }
 }

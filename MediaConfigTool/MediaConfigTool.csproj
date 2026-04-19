@@ -8,6 +8,20 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<RootNamespace>MediaConfigTool</RootNamespace>
 		<AssemblyName>MediaConfigTool</AssemblyName>
+		<ApplicationIcon>Narrin.ico</ApplicationIcon>
 	</PropertyGroup>
+
+	<ItemGroup>
+	  <None Remove="Narrin _Studio _Opening _Screen.png" />
+	  <None Remove="Narrin.ico" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Resource Include="Narrin.ico" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <SplashScreen Include="Narrin _Studio _Opening _Screen.png" />
+	</ItemGroup>
 
 </Project>

@@ -27,9 +27,8 @@ namespace MediaConfigTool.Services
 
                 return (timestamp ?? FallbackTimestamp(fullPath), orientation);
             }
-            catch(Exception ex)
+            catch(Exception)
             {
-                System.Diagnostics.Debug.WriteLine($"[ExifService] Failed to read metadata: {fullPath} - {ex.Message}");
                 return (FallbackTimestamp(fullPath), 1);
             }
         }
@@ -50,9 +49,8 @@ namespace MediaConfigTool.Services
                     return parsed;
                 }
             }
-            catch(Exception ex)
+            catch(Exception)
             {
-                System.Diagnostics.Debug.WriteLine($"[ExifService] ParseTimestamp failed - {ex.Message} ");
             }
 
             return null;

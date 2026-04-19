@@ -1,9 +1,10 @@
-﻿using System;
+﻿using MediaConfigTool.Models;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using MediaConfigTool.Models;
 
 namespace MediaConfigTool.Services
 {
@@ -54,6 +55,23 @@ namespace MediaConfigTool.Services
             {
                 try
                 {
+                    // Read orientation from EXIF before loading thumbnail
+                    int orientation = 1;
+                    try
+                    {
+                        using var metaStream = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+                        var frame = BitmapFrame.Create(metaStream, BitmapCreateOptions.DelayCreation, BitmapCacheOption.None);
+                        var metadata = frame.Metadata as BitmapMetadata;
+                        if (metadata != null)
+                        {
+                            var raw = metadata.GetQuery("/app1/ifd/{ushort=274}");
+                            if (raw is ushort value && value >= 1 && value <= 8)
+                                orientation = value;
+                        }
+                    }
+                    catch { /* orientation stays 1 */ }
+
+                    // Load the bitmap
                     var bitmap = new BitmapImage();
                     bitmap.BeginInit();
                     bitmap.UriSource = new Uri(fullPath);
@@ -61,7 +79,38 @@ namespace MediaConfigTool.Services
                     bitmap.CacheOption = BitmapCacheOption.OnLoad;
                     bitmap.EndInit();
                     bitmap.Freeze();
-                    return (BitmapImage?)bitmap;
+
+                    // Apply rotation if needed
+                    double angle = orientation switch
+                    {
+                        3 => 180,
+                        6 => 90,
+                        8 => 270,
+                        _ => 0
+                    };
+
+                    if (angle == 0)
+                        return (BitmapImage?)bitmap;
+
+                    var transformed = new TransformedBitmap(bitmap, new RotateTransform(angle));
+                    transformed.Freeze();
+
+                    // Convert back to BitmapImage for consistency
+                    var encoder = new JpegBitmapEncoder();
+                    encoder.Frames.Add(BitmapFrame.Create(transformed));
+
+                    using var ms = new System.IO.MemoryStream();
+                    encoder.Save(ms);
+                    ms.Position = 0;
+
+                    var rotated = new BitmapImage();
+                    rotated.BeginInit();
+                    rotated.StreamSource = ms;
+                    rotated.CacheOption = BitmapCacheOption.OnLoad;
+                    rotated.EndInit();
+                    rotated.Freeze();
+
+                    return (BitmapImage?)rotated;
                 }
                 catch (Exception ex)
                 {

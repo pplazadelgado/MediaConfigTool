@@ -25,12 +25,21 @@ namespace MediaConfigTool.ViewModels
         public ObservableCollection<MediaFile> MediaFiles { get; } = new();
         public ObservableCollection<FolderItem> RootFolders { get; } = new();
         public ObservableCollection<MediaFile> SelectedMediaFiles { get; } = new();
+        public ObservableCollection<Location> Locations { get; } = new();
+        public  ObservableCollection<Person> Persons { get; } = new();
+        public ObservableCollection<Event> Events { get; } = new();
+        public ObservableCollection<Tag> Tags { get; } = new();
+
+        public RenderSettings RenderSettings { get; } = new();
+
 
         public int SelectedCount => SelectedMediaFiles.Count;
         public bool HasSelection => SelectedMediaFiles.Count > 0;
         public bool IsSingleSelection => SelectedMediaFiles.Count == 1;
         public bool IsMultiSelection => SelectedMediaFiles.Count > 1;
-        public MediaFile? SelectedFile => IsSingleSelection ? SelectedMediaFiles[0]: null;
+        public MediaFile? SelectedFile => IsSingleSelection ? SelectedMediaFiles[0] : null;
+        public int SelectedImportedCount => SelectedMediaFiles.Count(f => f.IsImported);
+        public int SelectedNotImportedCount => SelectedMediaFiles.Count(f => !f.IsImported);
 
         private bool _statusIsWarning = false;
         public bool StatusIsWarning
@@ -50,7 +59,18 @@ namespace MediaConfigTool.ViewModels
         public Tenant? SelectedTenant
         {
             get => _selectedTenant;
-            set { _selectedTenant = value; OnPropertyChanged(); }
+            set
+            {
+                _selectedTenant = value;
+                OnPropertyChanged();
+                Locations.Clear();
+                MediaFiles.Clear();
+                Persons.Clear();
+                Events.Clear();
+                Tags.Clear();
+                if (_selectedTenant is not null)
+                    _ = LoadTenantDataAsync(_selectedTenant.TenantId);
+            }
         }
 
         private string _statusMessage = "Ready";
@@ -74,6 +94,33 @@ namespace MediaConfigTool.ViewModels
             set { _isImporting = value; OnPropertyChanged(); }
         }
 
+        private Location? _selectedLocation;
+        public Location? SelectedLocation
+        {
+            get => _selectedLocation;
+            set { _selectedLocation = value; OnPropertyChanged(); }
+        }
+
+        private Person? _selectedPerson;
+        public Person? SelectedPerson
+        {
+            get => _selectedPerson;
+            set { _selectedPerson = value; OnPropertyChanged();}
+        }
+
+        private Event? _selectedEvent;
+        public Event? SelectedEvent
+        {
+            get => _selectedEvent;
+            set { _selectedEvent = value; OnPropertyChanged(); }
+        }
+
+        private Tag? _selectedTag;
+        public Tag? SelectedTag
+        {
+            get => _selectedTag;
+            set { _selectedTag = value; OnPropertyChanged(); }
+        }
 
         private bool _isFolderPanelOpen = false;
         public GridLength FolderPanelWidth =>
@@ -85,6 +132,10 @@ namespace MediaConfigTool.ViewModels
         public ICommand CloseFolderPanelCommand { get; }
         public ICommand ImportCommand { get; }
         public ICommand CancelImportCommand { get; }
+        public ICommand AssignLocationCommand { get; }
+        public ICommand AssignPersonCommand {  get; }
+        public ICommand AssignEventCommand { get; }
+        public ICommand AssignTagCommand { get; }
 
         public MainViewModel()
         {
@@ -96,13 +147,36 @@ namespace MediaConfigTool.ViewModels
             CloseFolderPanelCommand = new RelayCommand(_ => CloseFolderPanel());
 
             ImportCommand = new RelayCommand(
-                 async _ => await StartImportAsync(),
-                 _ => !IsImporting && SelectedTenant != null && HasSelection);
+                async _ => await StartImportAsync(),
+                _ => !IsImporting && SelectedTenant != null && HasSelection);
 
             CancelImportCommand = new RelayCommand(
                 _ => _importCts?.Cancel(),
                 _ => IsImporting);
 
+            AssignLocationCommand = new RelayCommand(
+                async _ => await AssignLocationsAsync());
+
+            AssignPersonCommand = new RelayCommand(
+                async _ => await AssignMetadataAsync(
+                    "person",
+                    SelectedPerson?.PersonId,
+                    SelectedPerson?.DisplayName,
+                    (assetId, metaId) => _supabaseService.AssingPersonAsync(assetId, metaId, SelectedTenant!.TenantId)));
+
+            AssignEventCommand = new RelayCommand(
+                async _ => await AssignMetadataAsync(
+                    "event",
+                    SelectedEvent?.EventId,
+                    SelectedEvent?.EventName,
+                    (assetId, metaId) => _supabaseService.AssingEventAsync(assetId, metaId, SelectedTenant!.TenantId)));
+
+            AssignTagCommand = new RelayCommand(
+                async _ => await AssignMetadataAsync(
+                    "tag",
+                    SelectedTag?.TagId,
+                    SelectedTag?.TagName,
+                    (assetId, metaId) => _supabaseService.AssingTagAsync(assetId, metaId, SelectedTenant!.TenantId)));
         }
 
         public async Task LoadTenantsAsync()
@@ -210,7 +284,7 @@ namespace MediaConfigTool.ViewModels
             if (SelectedTenant == null) return;
 
             IsImporting = true;
-            StatusMessage = "Starting import ....";
+            StatusMessage = "Starting import....";
 
             _importCts = new CancellationTokenSource();
 
@@ -241,7 +315,7 @@ namespace MediaConfigTool.ViewModels
             {
                 StatusMessage = "Import cancelled";
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 StatusMessage = $"Import failed: {ex.Message}";
                 System.Diagnostics.Debug.WriteLine($"[MainViewModel] ImportAsync error - {ex.Message}");
@@ -257,9 +331,9 @@ namespace MediaConfigTool.ViewModels
         public void OnSelectionChanged(IList selectedItems)
         {
             SelectedMediaFiles.Clear();
-            foreach(var item in selectedItems)
+            foreach (var item in selectedItems)
             {
-                if(item is MediaFile file)
+                if (item is MediaFile file)
                     SelectedMediaFiles.Add(file);
             }
 
@@ -268,6 +342,10 @@ namespace MediaConfigTool.ViewModels
             OnPropertyChanged(nameof(IsSingleSelection));
             OnPropertyChanged(nameof(IsMultiSelection));
             OnPropertyChanged(nameof(SelectedFile));
+            OnPropertyChanged(nameof(SelectedImportedCount));
+            OnPropertyChanged(nameof(SelectedNotImportedCount));
+            OnPropertyChanged(nameof(SelectedImportedCount));
+            OnPropertyChanged(nameof(SelectedNotImportedCount));
         }
 
         private async Task CheckImportedStatusAsync()
@@ -281,11 +359,214 @@ namespace MediaConfigTool.ViewModels
                     SelectedTenant.TenantId, relativePaths);
 
                 foreach (var file in MediaFiles)
-                    file.IsImported = imported.Contains(file.RelativePath);
+                {
+                    if (imported.TryGetValue(file.RelativePath, out var assetId))
+                    {
+                        file.IsImported = true;
+                        file.MediaAssetId = assetId;
+                    }
+                    else
+                    {
+                        file.IsImported = false;
+                        file.MediaAssetId = null;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[MainViewModel] CheckImportedStatusAsync – {ex.Message}");
+            }
+        }
+
+        private async Task LoadTenantDataAsync(string tenantId)
+        {
+            StatusIsWarning = false;
+            StatusMessage = "Loading tenant data...";
+
+            await Task.WhenAll(
+                LoadLocationsAsync(tenantId),
+                LoadPersonsAsync(tenantId),
+                LoadEventsAsync(tenantId),
+                LoadTagsAsync(tenantId));
+
+            StatusIsWarning = false;
+            StatusMessage = $"{Locations.Count} location(s), {Persons.Count} person(s), {Events.Count} event(s), {Tags.Count} tag(s) loaded.";
+        }
+
+        private async Task LoadLocationsAsync(string tenantId)
+        {
+            try
+            {
+                var locations = await _supabaseService.GetLocationAsync(tenantId);
+                Locations.Clear();
+                foreach (var loc in locations)
+                    Locations.Add(loc);
+            }
+            catch (Exception ex)
+            {
+                StatusIsWarning = true;
+                StatusMessage = "Error loading locations.";
+                System.Diagnostics.Debug.WriteLine($"[MainViewModel] LoadLocationsAsync: {ex.Message}");
+            }
+        }
+
+        private async Task AssignLocationsAsync()
+        {
+            if (SelectedLocation == null)
+            {
+                StatusIsWarning = true;
+                StatusMessage = "Select a location first.";
+                return;
+            }
+
+            var pool = SelectedMediaFiles.Any()
+                ? SelectedMediaFiles
+                : (IEnumerable<MediaFile>)MediaFiles;
+
+            var targets = pool.Where(f => f.IsImported && f.MediaAssetId != null).ToList();
+            if (targets.Count == 0)
+            {
+                StatusIsWarning = true;
+                StatusMessage = "No imported images found.";
+                return;
+            }
+
+            int assigned = 0;
+            int skipped = 0;
+            int failed = 0;
+            string? lastError = null;
+
+            StatusIsWarning = false;
+            StatusMessage = $"Assigning location to {targets.Count} image(s)...";
+
+            foreach (var file in targets)
+            {
+                try
+                {
+                    var exists = await _supabaseService.MediaLocationExistsAsync(
+                        file.MediaAssetId!, SelectedLocation.LocationId);
+
+                    if (exists)
+                    {
+                        skipped++;
+                        continue;
+                    }
+
+                    var ok = await _supabaseService.InsertMediaLocationAsync(
+                        file.MediaAssetId!, SelectedLocation.LocationId, SelectedTenant!.TenantId);
+
+                    if (ok) assigned++;
+                    else failed++;
+                }
+                catch (Exception ex)
+                {
+                    failed++;
+                    lastError = ex.Message;
+                    System.Diagnostics.Debug.WriteLine($"[MainViewModel] AssignLocationsAsync - {file.FileName}: {ex.Message}");
+                }
+            }
+
+            StatusIsWarning = failed > 0;
+            var parts = new List<string>();
+            if (assigned > 0) parts.Add($"{assigned} assigned");
+            if (skipped > 0) parts.Add($"{skipped} skipped");
+            if (failed > 0) parts.Add($"{failed} failed");
+            StatusMessage = $"Location '{SelectedLocation.LocationName}': {string.Join(", ", parts)}"
+                + (lastError != null ? $" — {lastError}" : ".");
+        }
+
+        private async Task AssignMetadataAsync(
+    string metadataType,
+    string? metadataId,
+    string? metadataName,
+    Func<string, string, Task<bool>> assignFunc)
+        {
+            if (metadataId == null)
+            {
+                StatusIsWarning = true;
+                StatusMessage = $"Select a {metadataType} first.";
+                return;
+            }
+
+            var pool = SelectedMediaFiles.Any()
+                ? SelectedMediaFiles
+                : (IEnumerable<MediaFile>)MediaFiles;
+
+            var targets = pool.Where(f => f.IsImported && f.MediaAssetId != null).ToList();
+            if (targets.Count == 0)
+            {
+                StatusIsWarning = true;
+                StatusMessage = "No imported images found.";
+                return;
+            }
+
+            int assigned = 0;
+            int failed = 0;
+
+            StatusIsWarning = false;
+            StatusMessage = $"Assigning {metadataType} to {targets.Count} image(s)...";
+
+            foreach (var file in targets)
+            {
+                try
+                {
+                    var ok = await assignFunc(file.MediaAssetId!, metadataId);
+                    if (ok) assigned++;
+                    else failed++;
+                }
+                catch (Exception ex)
+                {
+                    failed++;
+                    System.Diagnostics.Debug.WriteLine($"[MainViewModel] Assign{metadataType} - {file.FileName}: {ex.Message}");
+                }
+            }
+
+            StatusIsWarning = failed > 0;
+            var parts = new List<string>();
+            if (assigned > 0) parts.Add($"{assigned} assigned");
+            if (failed > 0) parts.Add($"{failed} failed");
+            StatusMessage = $"{metadataType} '{metadataName}': {string.Join(", ", parts)}.";
+        }
+
+        private async Task LoadPersonsAsync(string tenantId)
+        {
+            try
+            {
+                var persons = await _supabaseService.GetPersonAsync(tenantId);
+                Persons.Clear();
+                foreach (var p in persons) Persons.Add(p);
             }
             catch(Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[MainViewModel] CheckImportedStatusAsync – {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[MainViewModel] LoadPersonsAsync: {ex.Message}");
+            }
+        }
+
+        private async Task LoadEventsAsync(string tenantId)
+        {
+            try
+            {
+                var events = await _supabaseService.GetEventsAsync(tenantId);
+                Events.Clear();
+                foreach (var e in events) Events.Add(e);
+            }
+            catch(Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[MainViewModel] LoadEventsAsync: {ex.Message}");
+            }
+        }
+
+        private async Task LoadTagsAsync(string tenantId)
+        {
+            try
+            {
+                var tags = await _supabaseService.GetTagsAsync(tenantId);
+                Tags.Clear();
+                foreach (var t in tags) Tags.Add(t);
+            }
+            catch(Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[MainViewModel] LoadTagsAsync: {ex.Message}");
             }
         }
 

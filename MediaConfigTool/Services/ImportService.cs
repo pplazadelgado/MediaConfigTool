@@ -81,6 +81,7 @@ namespace MediaConfigTool.Services
                     }
 
                     file.IsImported = true;
+                    file.MediaAssetId = mediaAssetId;
                     result.Imported++;
                     progress?.Report($"Imported: {file.FileName}");
                 }

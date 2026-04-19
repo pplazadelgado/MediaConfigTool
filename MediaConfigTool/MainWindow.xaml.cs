@@ -49,6 +49,30 @@ namespace MediaConfigTool
             }
         }
 
+        private void FolderTree_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            if (!e.Handled && sender is DependencyObject dep)
+            {
+                var sv = FindParent<ScrollViewer>(dep);
+                if (sv != null)
+                {
+                    e.Handled = true;
+                    sv.ScrollToVerticalOffset(sv.VerticalOffset - (e.Delta / 3.0));
+                }
+            }
+        }
+
+        private static T? FindParent<T>(DependencyObject child) where T : DependencyObject
+        {
+            var parent = System.Windows.Media.VisualTreeHelper.GetParent(child);
+            while (parent != null)
+            {
+                if (parent is T match) return match;
+                parent = System.Windows.Media.VisualTreeHelper.GetParent(parent);
+            }
+            return null;
+        }
+
         private void CloseButton_Click(object sender, RoutedEventArgs e)
         {
             Application.Current.Shutdown();
