@@ -29,6 +29,7 @@ namespace MediaConfigTool.ViewModels
         public  ObservableCollection<Person> Persons { get; } = new();
         public ObservableCollection<Event> Events { get; } = new();
         public ObservableCollection<Tag> Tags { get; } = new();
+        public ObservableCollection<TagCategory> TagCategories { get; } = new();
 
         public RenderSettings RenderSettings { get; } = new();
 
@@ -68,6 +69,7 @@ namespace MediaConfigTool.ViewModels
                 Persons.Clear();
                 Events.Clear();
                 Tags.Clear();
+                TagCategories.Clear();
                 if (_selectedTenant is not null)
                     _ = LoadTenantDataAsync(_selectedTenant.TenantId);
             }
@@ -139,6 +141,15 @@ namespace MediaConfigTool.ViewModels
         public ICommand CreateLocationCommand { get; }
         public ICommand EditLocationCommand { get; }
         public ICommand DeleteLocationCommand {  get; }
+        public ICommand CreatePersonCommand { get; }
+        public ICommand EditPersonCommand { get; }
+        public ICommand DeletePersonCommand { get; }
+        public ICommand CreateEventCommand { get; }
+        public ICommand EditEventCommand { get; }
+        public ICommand DeleteEventCommand { get; }
+        public ICommand CreateTagCommand { get; }
+        public ICommand EditTagCommand { get; }
+        public ICommand DeleteTagCommand { get; }
 
         public MainViewModel()
         {
@@ -188,6 +199,27 @@ namespace MediaConfigTool.ViewModels
 
             DeleteLocationCommand = new RelayCommand(
                 async _ => await DeleteLocationAsync());
+
+            CreatePersonCommand = new RelayCommand(
+                async _ => await CreatePersonAsync());
+            EditPersonCommand = new RelayCommand(
+                async _ => await EditPersonAsync());
+            DeletePersonCommand = new RelayCommand(
+                async _ => await DeletePersonAsync());
+
+            CreateEventCommand = new RelayCommand(
+                async _ => await CreateEventAsync());
+            EditEventCommand = new RelayCommand(
+                async _ => await EditEventAsync());
+            DeleteEventCommand = new RelayCommand(
+                async _ => await DeleteEventAsync());
+
+            CreateTagCommand = new RelayCommand(
+                async _ => await CreateTagAsync());
+            EditTagCommand = new RelayCommand(
+                async _ => await EditTagAsync());
+            DeleteTagCommand = new RelayCommand(
+                async _ => await DeleteTagAsync());
         }
 
         public async Task LoadTenantsAsync()
@@ -398,7 +430,8 @@ namespace MediaConfigTool.ViewModels
                 LoadLocationsAsync(tenantId),
                 LoadPersonsAsync(tenantId),
                 LoadEventsAsync(tenantId),
-                LoadTagsAsync(tenantId));
+                LoadTagsAsync(tenantId),
+                LoadTagCategoriesAsync(tenantId));
 
             StatusIsWarning = false;
             StatusMessage = $"{Locations.Count} location(s), {Persons.Count} person(s), {Events.Count} event(s), {Tags.Count} tag(s) loaded.";
@@ -581,6 +614,154 @@ namespace MediaConfigTool.ViewModels
             }
         }
 
+        private async Task LoadTagCategoriesAsync(string tenantId)
+        {
+            try
+            {
+                var categories = await _supabaseService.GetTagCategoriesAsync(tenantId);
+                TagCategories.Clear();
+                foreach (var c in categories) TagCategories.Add(c);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[MainViewModel] LoadTagCategoriesAsync: {ex.Message}");
+            }
+        }
+
+        private async Task CreateTagAsync()
+        {
+            if (SelectedTenant == null)
+            {
+                StatusIsWarning = true;
+                StatusMessage = "Select a tenant first.";
+                return;
+            }
+
+            var dialog = new Views.CreateTagWindow(TagCategories);
+            dialog.Owner = Application.Current.MainWindow;
+
+            if (dialog.ShowDialog() != true) return;
+
+            try
+            {
+                StatusIsWarning = false;
+                StatusMessage = "Creating tag...";
+
+                var ok = await _supabaseService.CreateTagAsync(
+                    dialog.TagName,
+                    dialog.TagCategoryId,
+                    dialog.Description,
+                    dialog.ColorHex,
+                    SelectedTenant.TenantId);
+
+                if (ok)
+                {
+                    StatusMessage = $"Tag '{dialog.TagName}' created.";
+                    await LoadTagsAsync(SelectedTenant.TenantId);
+                }
+                else
+                {
+                    StatusIsWarning = true;
+                    StatusMessage = "Failed to create tag.";
+                }
+            }
+            catch (Exception ex)
+            {
+                StatusIsWarning = true;
+                StatusMessage = $"Error creating tag: {ex.Message}";
+                System.Diagnostics.Debug.WriteLine($"[MainViewModel] CreateTagAsync: {ex.Message}");
+            }
+        }
+
+        private async Task EditTagAsync()
+        {
+            if (SelectedTenant == null) return;
+
+            if (SelectedTag == null)
+            {
+                StatusIsWarning = true;
+                StatusMessage = "Select a tag first.";
+                return;
+            }
+
+            var dialog = new Views.CreateTagWindow(SelectedTag, TagCategories);
+            dialog.Owner = Application.Current.MainWindow;
+
+            if (dialog.ShowDialog() != true) return;
+
+            try
+            {
+                StatusIsWarning = false;
+                StatusMessage = "Updating tag...";
+
+                var ok = await _supabaseService.UpdateTagAsync(
+                    SelectedTag.TagId,
+                    dialog.TagName,
+                    dialog.TagCategoryId,
+                    dialog.Description,
+                    dialog.ColorHex);
+
+                if (ok)
+                {
+                    StatusMessage = $"Tag '{dialog.TagName}' updated.";
+                    await LoadTagsAsync(SelectedTenant.TenantId);
+                }
+                else
+                {
+                    StatusIsWarning = true;
+                    StatusMessage = "Failed to update tag.";
+                }
+            }
+            catch (Exception ex)
+            {
+                StatusIsWarning = true;
+                StatusMessage = $"Error updating tag: {ex.Message}";
+                System.Diagnostics.Debug.WriteLine($"[MainViewModel] EditTagAsync: {ex.Message}");
+            }
+        }
+
+        private async Task DeleteTagAsync()
+        {
+            if (SelectedTenant == null) return;
+
+            if (SelectedTag == null)
+            {
+                StatusIsWarning = true;
+                StatusMessage = "Select a tag first.";
+                return;
+            }
+
+            var dialog = new Views.ConfirmDialog($"Delete '{SelectedTag.TagName}'?");
+            dialog.Owner = Application.Current.MainWindow;
+
+            if (dialog.ShowDialog() != true) return;
+
+            try
+            {
+                StatusIsWarning = false;
+                StatusMessage = "Deleting tag...";
+
+                var ok = await _supabaseService.DeleteTagAsync(SelectedTag.TagId);
+
+                if (ok)
+                {
+                    StatusMessage = "Tag deleted.";
+                    await LoadTagsAsync(SelectedTenant.TenantId);
+                }
+                else
+                {
+                    StatusIsWarning = true;
+                    StatusMessage = "Failed to delete tag.";
+                }
+            }
+            catch (Exception ex)
+            {
+                StatusIsWarning = true;
+                StatusMessage = $"Error deleting tag: {ex.Message}";
+                System.Diagnostics.Debug.WriteLine($"[MainViewModel] DeleteTagAsync: {ex.Message}");
+            }
+        }
+
         private async Task CreateLocationAsync()
         {
             if(SelectedTenant == null)
@@ -711,6 +892,270 @@ namespace MediaConfigTool.ViewModels
                 System.Diagnostics.Debug.WriteLine($"[MainViewModel] DeleteLocationAsync: {ex.Message}");
             }
         }
+        private async Task CreatePersonAsync()
+        {
+            if (SelectedTenant == null)
+            {
+                StatusIsWarning = true;
+                StatusMessage = "Select a tenant first.";
+                return;
+            }
+
+            var dialog = new Views.CreatePersonWindow();
+            dialog.Owner = Application.Current.MainWindow;
+
+            if (dialog.ShowDialog() != true) return;
+
+            try
+            {
+                StatusIsWarning = false;
+                StatusMessage = "Creating person...";
+
+                var ok = await _supabaseService.CreatePersonAsync(
+                    dialog.PersonName,
+                    dialog.PersonRelationshipType,
+                    SelectedTenant.TenantId);
+
+                if (ok)
+                {
+                    StatusMessage = $"Person '{dialog.PersonName}' created.";
+                    await LoadPersonsAsync(SelectedTenant.TenantId);
+                }
+                else
+                {
+                    StatusIsWarning = true;
+                    StatusMessage = "Failed to create person.";
+                }
+            }
+            catch (Exception ex)
+            {
+                StatusIsWarning = true;
+                StatusMessage = $"Error creating person: {ex.Message}";
+                System.Diagnostics.Debug.WriteLine($"[MainViewModel] CreatePersonAsync: {ex.Message}");
+            }
+        }
+
+        private async Task EditPersonAsync()
+        {
+            if (SelectedTenant == null) return;
+
+            if (SelectedPerson == null)
+            {
+                StatusIsWarning = true;
+                StatusMessage = "Select a person first.";
+                return;
+            }
+
+            var dialog = new Views.CreatePersonWindow(SelectedPerson);
+            dialog.Owner = Application.Current.MainWindow;
+
+            if (dialog.ShowDialog() != true) return;
+
+            try
+            {
+                StatusIsWarning = false;
+                StatusMessage = "Updating person...";
+
+                var ok = await _supabaseService.UpdatePersonAsync(
+                    SelectedPerson.PersonId,
+                    dialog.PersonName,
+                    dialog.PersonRelationshipType);
+
+                if (ok)
+                {
+                    StatusMessage = $"Person '{dialog.PersonName}' updated.";
+                    await LoadPersonsAsync(SelectedTenant.TenantId);
+                }
+                else
+                {
+                    StatusIsWarning = true;
+                    StatusMessage = "Failed to update person.";
+                }
+            }
+            catch (Exception ex)
+            {
+                StatusIsWarning = true;
+                StatusMessage = $"Error updating person: {ex.Message}";
+                System.Diagnostics.Debug.WriteLine($"[MainViewModel] EditPersonAsync: {ex.Message}");
+            }
+        }
+
+        private async Task DeletePersonAsync()
+        {
+            if (SelectedTenant == null) return;
+
+            if (SelectedPerson == null)
+            {
+                StatusIsWarning = true;
+                StatusMessage = "Select a person first.";
+                return;
+            }
+
+            var dialog = new Views.ConfirmDialog($"Delete '{SelectedPerson.DisplayName}'?");
+            dialog.Owner = Application.Current.MainWindow;
+
+            if (dialog.ShowDialog() != true) return;
+
+            try
+            {
+                StatusIsWarning = false;
+                StatusMessage = "Deleting person...";
+
+                var ok = await _supabaseService.DeletePersonAsync(SelectedPerson.PersonId);
+
+                if (ok)
+                {
+                    StatusMessage = "Person deleted.";
+                    await LoadPersonsAsync(SelectedTenant.TenantId);
+                }
+                else
+                {
+                    StatusIsWarning = true;
+                    StatusMessage = "Failed to delete person.";
+                }
+            }
+            catch (Exception ex)
+            {
+                StatusIsWarning = true;
+                StatusMessage = $"Error deleting person: {ex.Message}";
+                System.Diagnostics.Debug.WriteLine($"[MainViewModel] DeletePersonAsync: {ex.Message}");
+            }
+        }
+
+        private async Task CreateEventAsync()
+        {
+            if (SelectedTenant == null)
+            {
+                StatusIsWarning = true;
+                StatusMessage = "Select a tenant first.";
+                return;
+            }
+
+            var dialog = new Views.CreateEventWindow();
+            dialog.Owner = Application.Current.MainWindow;
+
+            if (dialog.ShowDialog() != true) return;
+
+            try
+            {
+                StatusIsWarning = false;
+                StatusMessage = "Creating event...";
+
+                var ok = await _supabaseService.CreateEventAsync(
+                    dialog.EventName,
+                    dialog.Description,
+                    dialog.StartDate,
+                    dialog.EndDate,
+                    SelectedTenant.TenantId);
+
+                if (ok)
+                {
+                    StatusMessage = $"Event '{dialog.EventName}' created.";
+                    await LoadEventsAsync(SelectedTenant.TenantId);
+                }
+                else
+                {
+                    StatusIsWarning = true;
+                    StatusMessage = "Failed to create event.";
+                }
+            }
+            catch (Exception ex)
+            {
+                StatusIsWarning = true;
+                StatusMessage = $"Error creating event: {ex.Message}";
+                System.Diagnostics.Debug.WriteLine($"[MainViewModel] CreateEventAsync: {ex.Message}");
+            }
+        }
+
+        private async Task EditEventAsync()
+        {
+            if (SelectedTenant == null) return;
+
+            if (SelectedEvent == null)
+            {
+                StatusIsWarning = true;
+                StatusMessage = "Select an event first.";
+                return;
+            }
+
+            var dialog = new Views.CreateEventWindow(SelectedEvent);
+            dialog.Owner = Application.Current.MainWindow;
+
+            if (dialog.ShowDialog() != true) return;
+
+            try
+            {
+                StatusIsWarning = false;
+                StatusMessage = "Updating event...";
+
+                var ok = await _supabaseService.UpdateEventAsync(
+                    SelectedEvent.EventId,
+                    dialog.EventName,
+                    dialog.Description,
+                    dialog.StartDate,
+                    dialog.EndDate);
+
+                if (ok)
+                {
+                    StatusMessage = $"Event '{dialog.EventName}' updated.";
+                    await LoadEventsAsync(SelectedTenant.TenantId);
+                }
+                else
+                {
+                    StatusIsWarning = true;
+                    StatusMessage = "Failed to update event.";
+                }
+            }
+            catch (Exception ex)
+            {
+                StatusIsWarning = true;
+                StatusMessage = $"Error updating event: {ex.Message}";
+                System.Diagnostics.Debug.WriteLine($"[MainViewModel] EditEventAsync: {ex.Message}");
+            }
+        }
+
+        private async Task DeleteEventAsync()
+        {
+            if (SelectedTenant == null) return;
+
+            if (SelectedEvent == null)
+            {
+                StatusIsWarning = true;
+                StatusMessage = "Select an event first.";
+                return;
+            }
+
+            var dialog = new Views.ConfirmDialog($"Delete '{SelectedEvent.EventName}'?");
+            dialog.Owner = Application.Current.MainWindow;
+
+            if (dialog.ShowDialog() != true) return;
+
+            try
+            {
+                StatusIsWarning = false;
+                StatusMessage = "Deleting event...";
+
+                var ok = await _supabaseService.DeleteEventAsync(SelectedEvent.EventId);
+
+                if (ok)
+                {
+                    StatusMessage = "Event deleted.";
+                    await LoadEventsAsync(SelectedTenant.TenantId);
+                }
+                else
+                {
+                    StatusIsWarning = true;
+                    StatusMessage = "Failed to delete event.";
+                }
+            }
+            catch (Exception ex)
+            {
+                StatusIsWarning = true;
+                StatusMessage = $"Error deleting event: {ex.Message}";
+                System.Diagnostics.Debug.WriteLine($"[MainViewModel] DeleteEventAsync: {ex.Message}");
+            }
+        }
+
         public event PropertyChangedEventHandler? PropertyChanged;
         protected void OnPropertyChanged([CallerMemberName] string? name = null)
             => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));

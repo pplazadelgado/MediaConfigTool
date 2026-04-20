@@ -408,9 +408,9 @@ namespace MediaConfigTool.Services
             try
             {
                 var url = $"{BaseUrl}/rest/v1/person" +
-                 $"?select=person_id,display_name,tenant_id" +
-                 $"&tenant_id=eq.{tenantId}" +
-                 $"&order=display_name.asc";
+                      $"?select=person_id,display_name,relationship_type,tenant_id" +
+                      $"&tenant_id=eq.{tenantId}" +
+                      $"&order=display_name.asc";
 
                 var result = await _httpClient.GetFromJsonAsync<List<Person>>(url);
 
@@ -428,7 +428,7 @@ namespace MediaConfigTool.Services
             try
             {
                 var url = $"{BaseUrl}/rest/v1/event" +
-                  $"?select=event_id,event_name,tenant_id" +
+                  $"?select=event_id,event_name,description,start_timestamp,end_timestamp,tenant_id" +
                   $"&tenant_id=eq.{tenantId}" +
                   $"&order=event_name.asc";
 
@@ -447,7 +447,7 @@ namespace MediaConfigTool.Services
             try
             {
                 var url = $"{BaseUrl}/rest/v1/tag" +
-                  $"?select=tag_id,tag_name,tenant_id" +
+                  $"?select=tag_id,tag_name,tag_category_id,description,color_hex,tenant_id" +
                   $"&tenant_id=eq.{tenantId}" +
                   $"&order=tag_name.asc";
 
@@ -458,6 +458,130 @@ namespace MediaConfigTool.Services
             {
                 System.Diagnostics.Debug.WriteLine($"[SupabaseService] GetTagsAsync: {ex.Message}");
                 return new List<Tag>();
+            }
+        }
+
+        public async Task<List<TagCategory>> GetTagCategoriesAsync(string tenantId)
+        {
+            try
+            {
+                var url = $"{BaseUrl}/rest/v1/tag_category" +
+                  $"?select=tag_category_id,name,category_type,tenant_id" +
+                  $"&tenant_id=eq.{tenantId}" +
+                  $"&order=name.asc";
+
+                var result = await _httpClient.GetFromJsonAsync<List<TagCategory>>(url);
+                return result ?? new List<TagCategory>();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SupabaseService] GetTagCategoriesAsync: {ex.Message}");
+                return new List<TagCategory>();
+            }
+        }
+
+        public async Task<bool> CreateTagAsync(string name, string tagCategoryId, string? description, string? colorHex, string tenantId)
+        {
+            try
+            {
+                var now = DateTime.UtcNow.ToString("o");
+                var payload = new
+                {
+                    tag_name = name,
+                    tag_category_id = tagCategoryId,
+                    description,
+                    color_hex = colorHex,
+                    tenant_id = tenantId,
+                    is_system_defined = false,
+                    created_at = now,
+                    updated_at = now
+                };
+
+                var json = JsonSerializer.Serialize(payload);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                var request = new HttpRequestMessage(HttpMethod.Post, $"{BaseUrl}/rest/v1/tag");
+                request.Headers.Add("Prefer", "return=minimal");
+                request.Content = content;
+
+                var response = await _httpClient.SendAsync(request);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var error = await response.Content.ReadAsStringAsync();
+                    throw new Exception($"HTTP {(int)response.StatusCode}: {error}");
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SupabaseService] CreateTagAsync: {ex.Message}");
+                return false;
+            }
+        }
+
+        public async Task<bool> UpdateTagAsync(string tagId, string name, string tagCategoryId, string? description, string? colorHex)
+        {
+            try
+            {
+                var now = DateTime.UtcNow.ToString("o");
+                var payload = new
+                {
+                    tag_name = name,
+                    tag_category_id = tagCategoryId,
+                    description,
+                    color_hex = colorHex,
+                    updated_at = now
+                };
+
+                var json = JsonSerializer.Serialize(payload);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                var url = $"{BaseUrl}/rest/v1/tag?tag_id=eq.{tagId}";
+                var request = new HttpRequestMessage(HttpMethod.Patch, url);
+                request.Headers.Add("Prefer", "return=minimal");
+                request.Content = content;
+
+                var response = await _httpClient.SendAsync(request);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var error = await response.Content.ReadAsStringAsync();
+                    throw new Exception($"HTTP {(int)response.StatusCode}: {error}");
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SupabaseService] UpdateTagAsync: {ex.Message}");
+                return false;
+            }
+        }
+
+        public async Task<bool> DeleteTagAsync(string tagId)
+        {
+            try
+            {
+                var url = $"{BaseUrl}/rest/v1/tag?tag_id=eq.{tagId}";
+                var request = new HttpRequestMessage(HttpMethod.Delete, url);
+                request.Headers.Add("Prefer", "return=minimal");
+
+                var response = await _httpClient.SendAsync(request);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var error = await response.Content.ReadAsStringAsync();
+                    throw new Exception($"HTTP {(int)response.StatusCode}: {error}");
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SupabaseService] DeleteTagAsync: {ex.Message}");
+                return false;
             }
         }
 
@@ -562,6 +686,211 @@ namespace MediaConfigTool.Services
             catch(Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[SupabaseService] AssignTagAsync: {ex.Message}");
+                return false;
+            }
+        }
+
+        public async Task<bool> CreatePersonAsync(string name, string? relationshipType, string tenantId)
+        {
+            try
+            {
+                var now = DateTime.UtcNow.ToString("o");
+                var payload = new
+                {
+                    display_name = name,
+                    relationship_type = relationshipType,
+                    tenant_id = tenantId,
+                    is_system_generated = false,
+                    created_at = now,
+                    updated_at = now
+                };
+
+                var json = JsonSerializer.Serialize(payload);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                var request = new HttpRequestMessage(HttpMethod.Post, $"{BaseUrl}/rest/v1/person");
+                request.Headers.Add("Prefer", "return=minimal");
+                request.Content = content;
+
+                var response = await _httpClient.SendAsync(request);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var error = await response.Content.ReadAsStringAsync();
+                    throw new Exception($"HTTP {(int)response.StatusCode}: {error}");
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SupabaseService] CreatePersonAsync: {ex.Message}");
+                return false;
+            }
+        }
+
+        public async Task<bool> UpdatePersonAsync(string personId, string name, string? relationshipType)
+        {
+            try
+            {
+                var now = DateTime.UtcNow.ToString("o");
+                var payload = new
+                {
+                    display_name = name,
+                    relationship_type = relationshipType,
+                    updated_at = now
+                };
+
+                var json = JsonSerializer.Serialize(payload);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                var url = $"{BaseUrl}/rest/v1/person?person_id=eq.{personId}";
+                var request = new HttpRequestMessage(HttpMethod.Patch, url);
+                request.Headers.Add("Prefer", "return=minimal");
+                request.Content = content;
+
+                var response = await _httpClient.SendAsync(request);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var error = await response.Content.ReadAsStringAsync();
+                    throw new Exception($"HTTP {(int)response.StatusCode}: {error}");
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SupabaseService] UpdatePersonAsync: {ex.Message}");
+                return false;
+            }
+        }
+
+        public async Task<bool> DeletePersonAsync(string personId)
+        {
+            try
+            {
+                var url = $"{BaseUrl}/rest/v1/person?person_id=eq.{personId}";
+                var request = new HttpRequestMessage(HttpMethod.Delete, url);
+                request.Headers.Add("Prefer", "return=minimal");
+
+                var response = await _httpClient.SendAsync(request);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var error = await response.Content.ReadAsStringAsync();
+                    throw new Exception($"HTTP {(int)response.StatusCode}: {error}");
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SupabaseService] DeletePersonAsync: {ex.Message}");
+                return false;
+            }
+        }
+
+        public async Task<bool> CreateEventAsync(string name, string? description, DateTimeOffset? startDate, DateTimeOffset? endDate, string tenantId)
+        {
+            try
+            {
+                var now = DateTime.UtcNow.ToString("o");
+                var payload = new
+                {
+                    event_name = name,
+                    description,
+                    start_timestamp = startDate?.ToString("o"),
+                    end_timestamp = endDate?.ToString("o"),
+                    tenant_id = tenantId,
+                    created_at = now,
+                    updated_at = now
+                };
+
+                var json = JsonSerializer.Serialize(payload);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                var request = new HttpRequestMessage(HttpMethod.Post, $"{BaseUrl}/rest/v1/event");
+                request.Headers.Add("Prefer", "return=minimal");
+                request.Content = content;
+
+                var response = await _httpClient.SendAsync(request);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var error = await response.Content.ReadAsStringAsync();
+                    throw new Exception($"HTTP {(int)response.StatusCode}: {error}");
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SupabaseService] CreateEventAsync: {ex.Message}");
+                return false;
+            }
+        }
+
+        public async Task<bool> UpdateEventAsync(string eventId, string name, string? description, DateTimeOffset? startDate, DateTimeOffset? endDate)
+        {
+            try
+            {
+                var now = DateTime.UtcNow.ToString("o");
+                var payload = new
+                {
+                    event_name = name,
+                    description,
+                    start_timestamp = startDate?.ToString("o"),
+                    end_timestamp = endDate?.ToString("o"),
+                    updated_at = now
+                };
+
+                var json = JsonSerializer.Serialize(payload);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                var url = $"{BaseUrl}/rest/v1/event?event_id=eq.{eventId}";
+                var request = new HttpRequestMessage(HttpMethod.Patch, url);
+                request.Headers.Add("Prefer", "return=minimal");
+                request.Content = content;
+
+                var response = await _httpClient.SendAsync(request);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var error = await response.Content.ReadAsStringAsync();
+                    throw new Exception($"HTTP {(int)response.StatusCode}: {error}");
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SupabaseService] UpdateEventAsync: {ex.Message}");
+                return false;
+            }
+        }
+
+        public async Task<bool> DeleteEventAsync(string eventId)
+        {
+            try
+            {
+                var url = $"{BaseUrl}/rest/v1/event?event_id=eq.{eventId}";
+                var request = new HttpRequestMessage(HttpMethod.Delete, url);
+                request.Headers.Add("Prefer", "return=minimal");
+
+                var response = await _httpClient.SendAsync(request);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var error = await response.Content.ReadAsStringAsync();
+                    throw new Exception($"HTTP {(int)response.StatusCode}: {error}");
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SupabaseService] DeleteEventAsync: {ex.Message}");
                 return false;
             }
         }

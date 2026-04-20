@@ -774,10 +774,72 @@
                         <!-- Persons -->
                         <Expander Style="{StaticResource DarkExpander}">
                             <Expander.Header>
-                                <TextBlock Text="👤 Persons"
-                                           Foreground="#4A90D9"
-                                           FontSize="13"
-                                           FontWeight="SemiBold"/>
+                                <DockPanel Width="160">
+                                    <StackPanel DockPanel.Dock="Right"
+                                                Orientation="Horizontal">
+                                        <Button Content="✏️"
+                                                Command="{Binding EditPersonCommand}"
+                                                Background="Transparent"
+                                                Foreground="White"
+                                                BorderThickness="0"
+                                                Width="22" Height="20"
+                                                FontSize="11"
+                                                Cursor="Hand"
+                                                Margin="0,0,4,0">
+                                            <Button.Template>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border Background="{TemplateBinding Background}"
+                                                            CornerRadius="3">
+                                                        <ContentPresenter HorizontalAlignment="Center"
+                                                                          VerticalAlignment="Center"/>
+                                                    </Border>
+                                                </ControlTemplate>
+                                            </Button.Template>
+                                        </Button>
+                                        <Button Content="🗑"
+                                                Command="{Binding DeletePersonCommand}"
+                                                Background="Transparent"
+                                                Foreground="#C0392B"
+                                                BorderThickness="0"
+                                                Width="22" Height="20"
+                                                FontSize="11"
+                                                Cursor="Hand"
+                                                Margin="0,0,4,0">
+                                            <Button.Template>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border Background="{TemplateBinding Background}"
+                                                            CornerRadius="3">
+                                                        <ContentPresenter HorizontalAlignment="Center"
+                                                                          VerticalAlignment="Center"/>
+                                                    </Border>
+                                                </ControlTemplate>
+                                            </Button.Template>
+                                        </Button>
+                                        <Button Content="+"
+                                                Command="{Binding CreatePersonCommand}"
+                                                Background="#4A90D9"
+                                                Foreground="White"
+                                                BorderThickness="0"
+                                                Width="20" Height="20"
+                                                FontSize="14"
+                                                Cursor="Hand">
+                                            <Button.Template>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border Background="{TemplateBinding Background}"
+                                                            CornerRadius="3">
+                                                        <ContentPresenter HorizontalAlignment="Center"
+                                                                          VerticalAlignment="Center"/>
+                                                    </Border>
+                                                </ControlTemplate>
+                                            </Button.Template>
+                                        </Button>
+                                    </StackPanel>
+                                    <TextBlock Text="👤 Persons"
+                                               Foreground="#4A90D9"
+                                               FontSize="13"
+                                               FontWeight="SemiBold"
+                                               VerticalAlignment="Center"/>
+                                </DockPanel>
                             </Expander.Header>
                             <StackPanel Margin="0,8,0,0">
                                 <ListBox ItemsSource="{Binding Persons}"
@@ -826,10 +888,72 @@
                         <!-- Events -->
                         <Expander Style="{StaticResource DarkExpander}">
                             <Expander.Header>
-                                <TextBlock Text="📅 Events"
-                                           Foreground="#4A90D9"
-                                           FontSize="13"
-                                           FontWeight="SemiBold"/>
+                                <DockPanel Width="160">
+                                    <StackPanel DockPanel.Dock="Right"
+                                                Orientation="Horizontal">
+                                        <Button Content="✏️"
+                                                Command="{Binding EditEventCommand}"
+                                                Background="Transparent"
+                                                Foreground="White"
+                                                BorderThickness="0"
+                                                Width="22" Height="20"
+                                                FontSize="11"
+                                                Cursor="Hand"
+                                                Margin="0,0,4,0">
+                                            <Button.Template>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border Background="{TemplateBinding Background}"
+                                                            CornerRadius="3">
+                                                        <ContentPresenter HorizontalAlignment="Center"
+                                                                          VerticalAlignment="Center"/>
+                                                    </Border>
+                                                </ControlTemplate>
+                                            </Button.Template>
+                                        </Button>
+                                        <Button Content="🗑"
+                                                Command="{Binding DeleteEventCommand}"
+                                                Background="Transparent"
+                                                Foreground="#C0392B"
+                                                BorderThickness="0"
+                                                Width="22" Height="20"
+                                                FontSize="11"
+                                                Cursor="Hand"
+                                                Margin="0,0,4,0">
+                                            <Button.Template>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border Background="{TemplateBinding Background}"
+                                                            CornerRadius="3">
+                                                        <ContentPresenter HorizontalAlignment="Center"
+                                                                          VerticalAlignment="Center"/>
+                                                    </Border>
+                                                </ControlTemplate>
+                                            </Button.Template>
+                                        </Button>
+                                        <Button Content="+"
+                                                Command="{Binding CreateEventCommand}"
+                                                Background="#4A90D9"
+                                                Foreground="White"
+                                                BorderThickness="0"
+                                                Width="20" Height="20"
+                                                FontSize="14"
+                                                Cursor="Hand">
+                                            <Button.Template>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border Background="{TemplateBinding Background}"
+                                                            CornerRadius="3">
+                                                        <ContentPresenter HorizontalAlignment="Center"
+                                                                          VerticalAlignment="Center"/>
+                                                    </Border>
+                                                </ControlTemplate>
+                                            </Button.Template>
+                                        </Button>
+                                    </StackPanel>
+                                    <TextBlock Text="📅 Events"
+                                               Foreground="#4A90D9"
+                                               FontSize="13"
+                                               FontWeight="SemiBold"
+                                               VerticalAlignment="Center"/>
+                                </DockPanel>
                             </Expander.Header>
                             <StackPanel Margin="0,8,0,0">
                                 <ListBox ItemsSource="{Binding Events}"
@@ -878,10 +1002,72 @@
                         <!-- Tags -->
                         <Expander Style="{StaticResource DarkExpander}">
                             <Expander.Header>
-                                <TextBlock Text="🏷️ Tags"
-                                           Foreground="#4A90D9"
-                                           FontSize="13"
-                                           FontWeight="SemiBold"/>
+                                <DockPanel Width="160">
+                                    <StackPanel DockPanel.Dock="Right"
+                                                Orientation="Horizontal">
+                                        <Button Content="✏️"
+                                                Command="{Binding EditTagCommand}"
+                                                Background="Transparent"
+                                                Foreground="White"
+                                                BorderThickness="0"
+                                                Width="22" Height="20"
+                                                FontSize="11"
+                                                Cursor="Hand"
+                                                Margin="0,0,4,0">
+                                            <Button.Template>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border Background="{TemplateBinding Background}"
+                                                            CornerRadius="3">
+                                                        <ContentPresenter HorizontalAlignment="Center"
+                                                                          VerticalAlignment="Center"/>
+                                                    </Border>
+                                                </ControlTemplate>
+                                            </Button.Template>
+                                        </Button>
+                                        <Button Content="🗑"
+                                                Command="{Binding DeleteTagCommand}"
+                                                Background="Transparent"
+                                                Foreground="#C0392B"
+                                                BorderThickness="0"
+                                                Width="22" Height="20"
+                                                FontSize="11"
+                                                Cursor="Hand"
+                                                Margin="0,0,4,0">
+                                            <Button.Template>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border Background="{TemplateBinding Background}"
+                                                            CornerRadius="3">
+                                                        <ContentPresenter HorizontalAlignment="Center"
+                                                                          VerticalAlignment="Center"/>
+                                                    </Border>
+                                                </ControlTemplate>
+                                            </Button.Template>
+                                        </Button>
+                                        <Button Content="+"
+                                                Command="{Binding CreateTagCommand}"
+                                                Background="#4A90D9"
+                                                Foreground="White"
+                                                BorderThickness="0"
+                                                Width="20" Height="20"
+                                                FontSize="14"
+                                                Cursor="Hand">
+                                            <Button.Template>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border Background="{TemplateBinding Background}"
+                                                            CornerRadius="3">
+                                                        <ContentPresenter HorizontalAlignment="Center"
+                                                                          VerticalAlignment="Center"/>
+                                                    </Border>
+                                                </ControlTemplate>
+                                            </Button.Template>
+                                        </Button>
+                                    </StackPanel>
+                                    <TextBlock Text="🏷️ Tags"
+                                               Foreground="#4A90D9"
+                                               FontSize="13"
+                                               FontWeight="SemiBold"
+                                               VerticalAlignment="Center"/>
+                                </DockPanel>
                             </Expander.Header>
                             <StackPanel Margin="0,8,0,0">
                                 <ListBox ItemsSource="{Binding Tags}"

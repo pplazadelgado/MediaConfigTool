@@ -12,5 +12,14 @@ namespace MediaConfigTool.Models
 
         [JsonPropertyName("tenant_id")]
         public string TenantId { get; set; } = string.Empty;
+
+        [JsonPropertyName("description")]
+        public string? Description { get; set; }
+
+        [JsonPropertyName("start_timestamp")]
+        public DateTimeOffset? StartTimestamp { get; set; }
+
+        [JsonPropertyName("end_timestamp")]
+        public DateTimeOffset? EndTimestamp { get; set; }
     }
 }
