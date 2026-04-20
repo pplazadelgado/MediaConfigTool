@@ -658,10 +658,72 @@
                         <!-- Locations -->
                         <Expander Style="{StaticResource DarkExpander}" IsExpanded="True">
                             <Expander.Header>
-                                <TextBlock Text="📍 Locations"
-                                           Foreground="#4A90D9"
-                                           FontSize="13"
-                                           FontWeight="SemiBold"/>
+                                <DockPanel Width="160">
+                                    <StackPanel DockPanel.Dock="Right" 
+                                         Orientation="Horizontal">
+                                        <Button Content="✏️"
+                                            Command="{Binding EditLocationCommand}"
+                                            Background="Transparent"
+                                            Foreground="White"
+                                            BorderThickness="0"
+                                            Width="22" Height="20"
+                                            FontSize="11"
+                                            Cursor="Hand"
+                                            Margin="0,0,4,0">
+                                            <Button.Template>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border Background="{TemplateBinding Background}"
+                                                         CornerRadius="3">
+                                                        <ContentPresenter HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"/>
+                                                    </Border>
+                                                </ControlTemplate>
+                                            </Button.Template>
+                                        </Button>
+                                        <Button Content="🗑"
+                                            Command="{Binding DeleteLocationCommand}"
+                                            Background="Transparent"
+                                            Foreground="#C0392B"
+                                            BorderThickness="0"
+                                            Width="22" Height="20"
+                                            FontSize="11"
+                                            Cursor="Hand"
+                                            Margin="0,0,4,0">   
+                                            <Button.Template>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border Background="{TemplateBinding Background}"
+                                                         CornerRadius="3">
+                                                        <ContentPresenter HorizontalAlignment="Center"
+                                                      VerticalAlignment="Center"/>
+                                                    </Border>
+                                                </ControlTemplate>
+                                            </Button.Template>
+                                        </Button>
+                                        <Button Content="+"
+                                            Command="{Binding CreateLocationCommand}"
+                                            Background="#4A90D9"
+                                            Foreground="White"
+                                            BorderThickness="0"
+                                            Width="20" Height="20"
+                                            FontSize="14"
+                                            Cursor="Hand">      
+                                            <Button.Template>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border Background="{TemplateBinding Background}"
+                                                         CornerRadius="3">
+                                                        <ContentPresenter HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"/>
+                                                    </Border>
+                                                </ControlTemplate>
+                                            </Button.Template>
+                                        </Button>
+                                    </StackPanel>
+                                    <TextBlock Text="📍 Locations"
+                                       Foreground="#4A90D9"
+                                       FontSize="13"
+                                       FontWeight="SemiBold"
+                                       VerticalAlignment="Center"/> 
+                                </DockPanel>
                             </Expander.Header>
                             <StackPanel Margin="0,8,0,0">
                                 <ListBox ItemsSource="{Binding Locations}"

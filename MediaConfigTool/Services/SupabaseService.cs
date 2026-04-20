@@ -2,14 +2,17 @@
 using MediaConfigTool.Models;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.IO;
 using System.Net.Http;
 using System.Net.Http.Json;
+using System.Security.Cryptography;
 using System.Security.Policy;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
+using System.Windows.Controls.Ribbon;
 
 namespace MediaConfigTool.Services
 {
@@ -559,6 +562,108 @@ namespace MediaConfigTool.Services
             catch(Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[SupabaseService] AssignTagAsync: {ex.Message}");
+                return false;
+            }
+        }
+
+        public async Task<bool> CreateLocationAsync(string name, string locationType, string tenantId, string? parentLocationId = null)
+        {
+            try
+            {
+                var now = DateTime.UtcNow.ToString("o");
+                var payload = new
+                {
+                    location_name = name,
+                    location_type = locationType,
+                    parent_location_id = parentLocationId,
+                    tenant_id = tenantId,
+                    is_system_defined = false,
+                    created_at = now,
+                    updated_at = now
+                };
+
+                var json = JsonSerializer.Serialize(payload);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                var request = new HttpRequestMessage(HttpMethod.Post, $"{BaseUrl}/rest/v1/location");
+                request.Headers.Add("Prefer", "return=minimal");
+                request.Content = content;
+
+                var response = await _httpClient.SendAsync(request);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var error = await response.Content.ReadAsStringAsync();
+                    throw new Exception($"HTTP {(int)response.StatusCode}: {error}");
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SupabaseService] CreateLocationAsync: {ex.Message}");
+                return false;
+            }
+        }
+
+        public async Task<bool> UpdateLocationAsync( string locationId, string name, string locationType)
+        {
+            try
+            {
+                var now = DateTime.UtcNow.ToString("o");
+                var payload = new
+                {
+                    location_name = name,
+                    location_type = locationType,
+                    updated_at = now
+                };
+
+                var json = JsonSerializer.Serialize(payload);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                var url = $"{BaseUrl}/rest/v1/location?location_id=eq.{locationId}";
+                var request = new HttpRequestMessage(HttpMethod.Patch, url);
+                request.Headers.Add("Prefer", "return=minimal");
+                request.Content = content;
+
+                var response = await _httpClient.SendAsync(request);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var error = await response.Content.ReadAsStringAsync();
+                    throw new Exception($"HTTP {(int)response.StatusCode}: {error}");
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SupabaseService] UpdateLocationAsync: {ex.Message}");
+                return false;
+            }
+        }
+
+        public async Task<bool> DeleteLocationAsync(string locationId)
+        {
+            try
+            {
+                var url = $"{BaseUrl}/rest/v1/location?location_id=eq.{locationId}";
+                var request = new HttpRequestMessage(HttpMethod.Delete, url);
+                request.Headers.Add("Prefer", "retur=minimal");
+
+                var response = await _httpClient.SendAsync(request);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var error = await response.Content.ReadAsStringAsync();
+                    throw new Exception($"HTTP {(int)response.StatusCode}: {error}");
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SupabaseService] DeleteLocationAsync: {ex.Message}");
                 return false;
             }
         }

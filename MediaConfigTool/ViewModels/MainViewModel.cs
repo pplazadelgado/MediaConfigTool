@@ -136,6 +136,9 @@ namespace MediaConfigTool.ViewModels
         public ICommand AssignPersonCommand {  get; }
         public ICommand AssignEventCommand { get; }
         public ICommand AssignTagCommand { get; }
+        public ICommand CreateLocationCommand { get; }
+        public ICommand EditLocationCommand { get; }
+        public ICommand DeleteLocationCommand {  get; }
 
         public MainViewModel()
         {
@@ -177,6 +180,14 @@ namespace MediaConfigTool.ViewModels
                     SelectedTag?.TagId,
                     SelectedTag?.TagName,
                     (assetId, metaId) => _supabaseService.AssingTagAsync(assetId, metaId, SelectedTenant!.TenantId)));
+
+            CreateLocationCommand = new RelayCommand(
+                async _ => await CreateLocationAsync());
+            EditLocationCommand = new RelayCommand(
+                async _ => await EditLocationAsync());
+
+            DeleteLocationCommand = new RelayCommand(
+                async _ => await DeleteLocationAsync());
         }
 
         public async Task LoadTenantsAsync()
@@ -570,6 +581,136 @@ namespace MediaConfigTool.ViewModels
             }
         }
 
+        private async Task CreateLocationAsync()
+        {
+            if(SelectedTenant == null)
+            {
+                StatusIsWarning = true;
+                StatusMessage = "Select a tenant first.";
+                return;
+            }
+
+            var dialog = new Views.CreateLocationWindow();
+            dialog.Owner = Application.Current.MainWindow;
+
+            if (dialog.ShowDialog() != true) return;
+
+            try
+            {
+                StatusIsWarning = false;
+                StatusMessage = "Creating location...";
+
+                var ok = await _supabaseService.CreateLocationAsync(
+                    dialog.LocationName,
+                    dialog.LocationType,
+                    SelectedTenant.TenantId);
+
+                if (ok)
+                {
+                    StatusMessage = $"Location '{dialog.LocationName}' created";
+                    await LoadLocationsAsync(SelectedTenant.TenantId);
+                }
+                else
+                {
+                    StatusIsWarning = true;
+                    StatusMessage = "Failed to create location.";
+                }
+            }
+            catch (Exception ex)
+            {
+                StatusIsWarning = true;
+                StatusMessage = $"Error creating location: {ex.Message}";
+                System.Diagnostics.Debug.WriteLine($"[MainViewModel] CreateLocationAsync: {ex.Message}");
+            }
+        }
+
+        private async Task EditLocationAsync()
+        {
+            if (SelectedTenant == null) return;
+
+            if(SelectedLocation == null)
+            {
+                StatusIsWarning = true;
+                StatusMessage = "Select a location first,";
+                return;
+            }
+
+            var dialog = new Views.CreateLocationWindow(SelectedLocation);
+            dialog.Owner = Application.Current.MainWindow;
+
+            if(dialog.ShowDialog() != true) return;
+
+            try
+            {
+                StatusIsWarning = false;
+                StatusMessage = "Updating location...";
+
+                var ok = await _supabaseService.UpdateLocationAsync(
+                    SelectedLocation.LocationId,
+                    dialog.LocationName,
+                    dialog.LocationType);
+
+                if (ok)
+                {
+                    StatusMessage = $"Locacion '{dialog.LocationName}' updated";
+                    await LoadLocationsAsync(SelectedTenant.TenantId);
+                }
+                else
+                {
+                    StatusIsWarning = true;
+                    StatusMessage = "Failed to update location.";
+                }
+            }
+            catch(Exception ex)
+            {
+                StatusIsWarning = true;
+                StatusMessage = $"Error updating location: {ex.Message}";
+                System.Diagnostics.Debug.WriteLine($"[MainViewModel] EditLocationAsync: {ex.Message}");
+            }
+        }
+
+        private async Task DeleteLocationAsync()
+        {
+            if (SelectedTenant == null) return;
+
+            if(SelectedLocation == null)
+            {
+                StatusIsWarning = true;
+                StatusMessage = "Select a location first.";
+                return;
+            }
+
+            var dialog = new Views.ConfirmDialog(
+                $"Delete '{SelectedLocation.LocationName}'?");
+                        dialog.Owner = Application.Current.MainWindow;
+
+            if (dialog.ShowDialog() != true) return;
+
+            try
+            {
+                StatusIsWarning = false;
+                StatusMessage = "Deleting location...";
+
+                var ok = await _supabaseService.DeleteLocationAsync(SelectedLocation.LocationId);
+
+                if (ok)
+                {
+                    StatusMessage = "Location deleted.";
+                    await LoadLocationsAsync(SelectedTenant.TenantId);
+                }
+                else
+                {
+                    StatusIsWarning = true;
+                    StatusMessage = "Failed to delete location.";
+                }
+            }
+            catch (Exception ex)
+            {
+                StatusIsWarning = true;
+                StatusMessage = $"Error deleting location: {ex.Message}";
+                System.Diagnostics.Debug.WriteLine($"[MainViewModel] DeleteLocationAsync: {ex.Message}");
+            }
+        }
         public event PropertyChangedEventHandler? PropertyChanged;
         protected void OnPropertyChanged([CallerMemberName] string? name = null)
             => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
