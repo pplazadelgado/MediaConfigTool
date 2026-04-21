@@ -998,7 +998,8 @@ namespace MediaConfigTool.Services
             }
         }
 
-        public async Task<string?> CreateVisualAssetAsync(string assetUri, string mimeType, string tenantId)
+        public async Task<bool> CreateVisualAssetAsync(
+             string assetUri, string mimeType, string tenantId)
         {
             try
             {
@@ -1026,24 +1027,16 @@ namespace MediaConfigTool.Services
                 if (!response.IsSuccessStatusCode)
                 {
                     var error = await response.Content.ReadAsStringAsync();
-                    throw new Exception($"HTTP {(int)response.StatusCode}: {error}");
+                    System.Diagnostics.Debug.WriteLine($"[SupabaseService] CreateVisualAssetAsync HTTP {(int)response.StatusCode}: {error}");
+                    return false;
                 }
 
-                var body = await response.Content.ReadAsStringAsync();
-                using var doc = JsonDocument.Parse(body);
-
-                string? id = null;
-                if (doc.RootElement.ValueKind == JsonValueKind.Array)
-                    id = doc.RootElement[0].GetProperty("visual_asset_id").GetString();
-                else if (doc.RootElement.ValueKind == JsonValueKind.Object)
-                    id = doc.RootElement.GetProperty("visual_asset_id").GetString();
-
-                return id;
+                return true;
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[SupabaseService] CreateVisualAssetAsync: {ex.Message}");
-                return null;
+                return false;
             }
         }
 
@@ -1103,6 +1096,31 @@ namespace MediaConfigTool.Services
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[SupabaseService] AssignMapToLocationAsync: {ex.Message}");
+                return false;
+            }
+        }
+
+        public async Task<bool> VisualAssetExistsAsync(string assetUri, string tenantId)
+        {
+            try
+            {
+                var url = $"{BaseUrl}/rest/v1/visual_asset" +
+                          $"?asset_uri=eq.{Uri.EscapeDataString(assetUri)}" +
+                          $"&tenant_id=eq.{tenantId}" +
+                          $"&select=visual_asset_id" +
+                          $"&limit=1";
+
+                var response = await _httpClient.GetAsync(url);
+                if (!response.IsSuccessStatusCode) return false;
+
+                var body = await response.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(body);
+                return doc.RootElement.ValueKind == JsonValueKind.Array
+                    && doc.RootElement.GetArrayLength() > 0;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SupabaseService] VisualAssetExistsAsync: {ex.Message}");
                 return false;
             }
         }

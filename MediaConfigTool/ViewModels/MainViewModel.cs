@@ -149,6 +149,8 @@ namespace MediaConfigTool.ViewModels
         public ICommand CreateTagCommand { get; }
         public ICommand EditTagCommand { get; }
         public ICommand DeleteTagCommand { get; }
+        public ICommand LoadMapCommand { get; }
+        public ICommand AssignMapCommand { get; }
 
         public MainViewModel()
         {
@@ -219,6 +221,11 @@ namespace MediaConfigTool.ViewModels
                 async _ => await EditTagAsync());
             DeleteTagCommand = new RelayCommand(
                 async _ => await DeleteTagAsync());
+            LoadMapCommand = new RelayCommand(
+                async _ => await LoadMapAsync());
+
+            AssignMapCommand = new RelayCommand(
+                async _ => await AssignMapAsync());
 
         }
 
@@ -1191,6 +1198,7 @@ namespace MediaConfigTool.ViewModels
 
                 int loaded = 0;
                 int failed = 0;
+                int skipped = 0;
 
                 StatusIsWarning = false;
                 StatusMessage = $"Loading {files.Count} map image(s)...";
@@ -1211,10 +1219,19 @@ namespace MediaConfigTool.ViewModels
                             _ => "application/octet-stream"
                         };
 
-                        var assetId = await _supabaseService.CreateVisualAssetAsync(
+                        var exists = await _supabaseService.VisualAssetExistsAsync(
+                            destination, SelectedTenant.TenantId);
+
+                        if (exists)
+                        {
+                            skipped++;
+                            continue;
+                        }
+
+                        var ok = await _supabaseService.CreateVisualAssetAsync(
                             destination, mimeType, SelectedTenant.TenantId);
 
-                        if (assetId != null) loaded++;
+                        if (ok) loaded++;
                         else failed++;
                     }
                     catch (Exception ex)
@@ -1228,6 +1245,7 @@ namespace MediaConfigTool.ViewModels
                 var parts = new List<string>();
                 if (loaded > 0) parts.Add($"{loaded} loaded");
                 if (failed > 0) parts.Add($"{failed} failed");
+                if (skipped > 0) parts.Add($"{skipped} already existed");
                 StatusMessage = $"Maps: {string.Join(", ", parts)}.";
             }
             catch (Exception ex)

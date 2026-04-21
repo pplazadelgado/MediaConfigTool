@@ -36,8 +36,7 @@ namespace MediaConfigTool.Services
         /// </summary>
         public static string GetMapDestinationPath(string sourceFileName)
         {
-            var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-            var safeName = $"{timestamp}_{Path.GetFileName(sourceFileName)}";
+            var safeName = Path.GetFileName(sourceFileName);
             return Path.Combine(MapsFolder, safeName);
         }
     }
