@@ -765,9 +765,19 @@
                                     </ListBox.ItemContainerStyle>
                                 </ListBox>
                                 <Button Content="Assign Location"
-                                        Style="{StaticResource PrimaryButton}"
-                                        Command="{Binding AssignLocationCommand}"
-                                        Margin="0,8,0,0"/>
+                                    Style="{StaticResource PrimaryButton}"
+                                    Command="{Binding AssignLocationCommand}"
+                                    Margin="0,8,0,0"/>
+
+                                <Button Content="Load Map"
+                                    Style="{StaticResource PrimaryButton}"
+                                    Command="{Binding LoadMapCommand}"
+                                    Margin="0,8,0,0"/>
+
+                                <Button Content="Assign Map"
+                                    Style="{StaticResource PrimaryButton}"
+                                    Command="{Binding AssignMapCommand}"
+                                    Margin="0,4,0,0"/>          
                             </StackPanel>
                         </Expander>
 

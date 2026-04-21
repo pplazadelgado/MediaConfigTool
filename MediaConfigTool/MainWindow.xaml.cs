@@ -12,7 +12,7 @@ namespace MediaConfigTool
         public MainWindow()
         {
             InitializeComponent();
-            new AppPathsService().EnsureFolderExist();
+            AppPathsService.EnsureFoldersExist();
             DataContext = new MainViewModel();
         }
 

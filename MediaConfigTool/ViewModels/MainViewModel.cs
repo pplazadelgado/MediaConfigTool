@@ -30,7 +30,6 @@ namespace MediaConfigTool.ViewModels
         public ObservableCollection<Event> Events { get; } = new();
         public ObservableCollection<Tag> Tags { get; } = new();
         public ObservableCollection<TagCategory> TagCategories { get; } = new();
-
         public RenderSettings RenderSettings { get; } = new();
 
 
@@ -220,6 +219,7 @@ namespace MediaConfigTool.ViewModels
                 async _ => await EditTagAsync());
             DeleteTagCommand = new RelayCommand(
                 async _ => await DeleteTagAsync());
+
         }
 
         public async Task LoadTenantsAsync()
@@ -614,154 +614,6 @@ namespace MediaConfigTool.ViewModels
             }
         }
 
-        private async Task LoadTagCategoriesAsync(string tenantId)
-        {
-            try
-            {
-                var categories = await _supabaseService.GetTagCategoriesAsync(tenantId);
-                TagCategories.Clear();
-                foreach (var c in categories) TagCategories.Add(c);
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[MainViewModel] LoadTagCategoriesAsync: {ex.Message}");
-            }
-        }
-
-        private async Task CreateTagAsync()
-        {
-            if (SelectedTenant == null)
-            {
-                StatusIsWarning = true;
-                StatusMessage = "Select a tenant first.";
-                return;
-            }
-
-            var dialog = new Views.CreateTagWindow(TagCategories);
-            dialog.Owner = Application.Current.MainWindow;
-
-            if (dialog.ShowDialog() != true) return;
-
-            try
-            {
-                StatusIsWarning = false;
-                StatusMessage = "Creating tag...";
-
-                var ok = await _supabaseService.CreateTagAsync(
-                    dialog.TagName,
-                    dialog.TagCategoryId,
-                    dialog.Description,
-                    dialog.ColorHex,
-                    SelectedTenant.TenantId);
-
-                if (ok)
-                {
-                    StatusMessage = $"Tag '{dialog.TagName}' created.";
-                    await LoadTagsAsync(SelectedTenant.TenantId);
-                }
-                else
-                {
-                    StatusIsWarning = true;
-                    StatusMessage = "Failed to create tag.";
-                }
-            }
-            catch (Exception ex)
-            {
-                StatusIsWarning = true;
-                StatusMessage = $"Error creating tag: {ex.Message}";
-                System.Diagnostics.Debug.WriteLine($"[MainViewModel] CreateTagAsync: {ex.Message}");
-            }
-        }
-
-        private async Task EditTagAsync()
-        {
-            if (SelectedTenant == null) return;
-
-            if (SelectedTag == null)
-            {
-                StatusIsWarning = true;
-                StatusMessage = "Select a tag first.";
-                return;
-            }
-
-            var dialog = new Views.CreateTagWindow(SelectedTag, TagCategories);
-            dialog.Owner = Application.Current.MainWindow;
-
-            if (dialog.ShowDialog() != true) return;
-
-            try
-            {
-                StatusIsWarning = false;
-                StatusMessage = "Updating tag...";
-
-                var ok = await _supabaseService.UpdateTagAsync(
-                    SelectedTag.TagId,
-                    dialog.TagName,
-                    dialog.TagCategoryId,
-                    dialog.Description,
-                    dialog.ColorHex);
-
-                if (ok)
-                {
-                    StatusMessage = $"Tag '{dialog.TagName}' updated.";
-                    await LoadTagsAsync(SelectedTenant.TenantId);
-                }
-                else
-                {
-                    StatusIsWarning = true;
-                    StatusMessage = "Failed to update tag.";
-                }
-            }
-            catch (Exception ex)
-            {
-                StatusIsWarning = true;
-                StatusMessage = $"Error updating tag: {ex.Message}";
-                System.Diagnostics.Debug.WriteLine($"[MainViewModel] EditTagAsync: {ex.Message}");
-            }
-        }
-
-        private async Task DeleteTagAsync()
-        {
-            if (SelectedTenant == null) return;
-
-            if (SelectedTag == null)
-            {
-                StatusIsWarning = true;
-                StatusMessage = "Select a tag first.";
-                return;
-            }
-
-            var dialog = new Views.ConfirmDialog($"Delete '{SelectedTag.TagName}'?");
-            dialog.Owner = Application.Current.MainWindow;
-
-            if (dialog.ShowDialog() != true) return;
-
-            try
-            {
-                StatusIsWarning = false;
-                StatusMessage = "Deleting tag...";
-
-                var ok = await _supabaseService.DeleteTagAsync(SelectedTag.TagId);
-
-                if (ok)
-                {
-                    StatusMessage = "Tag deleted.";
-                    await LoadTagsAsync(SelectedTenant.TenantId);
-                }
-                else
-                {
-                    StatusIsWarning = true;
-                    StatusMessage = "Failed to delete tag.";
-                }
-            }
-            catch (Exception ex)
-            {
-                StatusIsWarning = true;
-                StatusMessage = $"Error deleting tag: {ex.Message}";
-                System.Diagnostics.Debug.WriteLine($"[MainViewModel] DeleteTagAsync: {ex.Message}");
-            }
-        }
-
         private async Task CreateLocationAsync()
         {
             if(SelectedTenant == null)
@@ -854,7 +706,7 @@ namespace MediaConfigTool.ViewModels
         {
             if (SelectedTenant == null) return;
 
-            if(SelectedLocation == null)
+            if (SelectedLocation == null)
             {
                 StatusIsWarning = true;
                 StatusMessage = "Select a location first.";
@@ -863,7 +715,7 @@ namespace MediaConfigTool.ViewModels
 
             var dialog = new Views.ConfirmDialog(
                 $"Delete '{SelectedLocation.LocationName}'?");
-                        dialog.Owner = Application.Current.MainWindow;
+            dialog.Owner = Application.Current.MainWindow;
 
             if (dialog.ShowDialog() != true) return;
 
@@ -1155,6 +1007,292 @@ namespace MediaConfigTool.ViewModels
                 System.Diagnostics.Debug.WriteLine($"[MainViewModel] DeleteEventAsync: {ex.Message}");
             }
         }
+
+        private async Task CreateTagAsync()
+        {
+            if (SelectedTenant == null)
+            {
+                StatusIsWarning = true;
+                StatusMessage = "Select a tenant first.";
+                return;
+            }
+
+            var dialog = new Views.CreateTagWindow(TagCategories);
+            dialog.Owner = Application.Current.MainWindow;
+
+            if (dialog.ShowDialog() != true) return;
+
+            try
+            {
+                StatusIsWarning = false;
+                StatusMessage = "Creating tag...";
+
+                var ok = await _supabaseService.CreateTagAsync(
+                    dialog.TagName,
+                    dialog.TagCategoryId,
+                    dialog.Description,
+                    dialog.ColorHex,
+                    SelectedTenant.TenantId);
+
+                if (ok)
+                {
+                    StatusMessage = $"Tag '{dialog.TagName}' created.";
+                    await LoadTagsAsync(SelectedTenant.TenantId);
+                }
+                else
+                {
+                    StatusIsWarning = true;
+                    StatusMessage = "Failed to create tag.";
+                }
+            }
+            catch (Exception ex)
+            {
+                StatusIsWarning = true;
+                StatusMessage = $"Error creating tag: {ex.Message}";
+                System.Diagnostics.Debug.WriteLine($"[MainViewModel] CreateTagAsync: {ex.Message}");
+            }
+        }
+
+        private async Task EditTagAsync()
+        {
+            if (SelectedTenant == null) return;
+
+            if (SelectedTag == null)
+            {
+                StatusIsWarning = true;
+                StatusMessage = "Select a tag first.";
+                return;
+            }
+
+            var dialog = new Views.CreateTagWindow(SelectedTag,TagCategories);
+            dialog.Owner = Application.Current.MainWindow;
+
+            if (dialog.ShowDialog() != true) return;
+
+            try
+            {
+                StatusIsWarning = false;
+                StatusMessage = "Updating tag...";
+
+                var ok = await _supabaseService.UpdateTagAsync(
+                    SelectedTag.TagId,
+                    dialog.TagName,
+                    dialog.TagCategoryId,
+                    dialog.Description,
+                    dialog.ColorHex);
+
+                if (ok)
+                {
+                    StatusMessage = $"Tag '{dialog.TagName}' updated.";
+                    await LoadTagsAsync(SelectedTenant.TenantId);
+                }
+                else
+                {
+                    StatusIsWarning = true;
+                    StatusMessage = "Failed to update tag.";
+                }
+            }
+            catch (Exception ex)
+            {
+                StatusIsWarning = true;
+                StatusMessage = $"Error updating tag: {ex.Message}";
+                System.Diagnostics.Debug.WriteLine($"[MainViewModel] EditTagAsync: {ex.Message}");
+            }
+        }
+
+        private async Task DeleteTagAsync()
+        {
+            if (SelectedTenant == null) return;
+
+            if (SelectedTag == null)
+            {
+                StatusIsWarning = true;
+                StatusMessage = "Select a tag first.";
+                return;
+            }
+
+            var dialog = new Views.ConfirmDialog($"Delete '{SelectedTag.TagName}'?");
+            dialog.Owner = Application.Current.MainWindow;
+
+            if (dialog.ShowDialog() != true) return;
+
+            try
+            {
+                StatusIsWarning = false;
+                StatusMessage = "Deleting tag...";
+
+                var ok = await _supabaseService.DeleteTagAsync(SelectedTag.TagId);
+
+                if (ok)
+                {
+                    StatusMessage = "Tag deleted.";
+                    await LoadTagsAsync(SelectedTenant.TenantId);
+                }
+                else
+                {
+                    StatusIsWarning = true;
+                    StatusMessage = "Failed to delete tag.";
+                }
+            }
+            catch (Exception ex)
+            {
+                StatusIsWarning = true;
+                StatusMessage = $"Error deleting tag: {ex.Message}";
+                System.Diagnostics.Debug.WriteLine($"[MainViewModel] DeleteTagAsync: {ex.Message}");
+            }
+        }
+
+        private async Task LoadTagCategoriesAsync(string tenantId)
+        {
+            try
+            {
+                var categories = await _supabaseService.GetTagCategoriesAsync(tenantId);
+                TagCategories.Clear();
+                foreach (var c in categories) TagCategories.Add(c);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[MainViewModel] LoadTagCategoriesAsync: {ex.Message}");
+            }
+        }
+
+        private async Task LoadMapAsync()
+        {
+            if (SelectedTenant == null)
+            {
+                StatusIsWarning = true;
+                StatusMessage = "Select a tenant first.";
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(SelectedFolder))
+            {
+                StatusIsWarning = true;
+                StatusMessage = "Select a folder first using Browse Folder.";
+                return;
+            }
+
+            var supportedExtensions = new[] { ".jpg", ".jpeg", ".png" };
+            var files = Directory.GetFiles(SelectedFolder)
+                .Where(f => supportedExtensions.Contains(
+                    Path.GetExtension(f).ToLowerInvariant()))
+                .ToList();
+
+            if (files.Count == 0)
+            {
+                StatusIsWarning = true;
+                StatusMessage = "No image files found in selected folder.";
+                return;
+            }
+
+            try
+            {
+                AppPathsService.EnsureFoldersExist();
+
+                int loaded = 0;
+                int failed = 0;
+
+                StatusIsWarning = false;
+                StatusMessage = $"Loading {files.Count} map image(s)...";
+
+                foreach (var file in files)
+                {
+                    try
+                    {
+                        var destination = AppPathsService.GetMapDestinationPath(file);
+                        if (!File.Exists(destination))
+                            new FileInfo(file).CopyTo(destination);
+
+                        var ext = Path.GetExtension(file).ToLowerInvariant();
+                        var mimeType = ext switch
+                        {
+                            ".jpg" or ".jpeg" => "image/jpeg",
+                            ".png" => "image/png",
+                            _ => "application/octet-stream"
+                        };
+
+                        var assetId = await _supabaseService.CreateVisualAssetAsync(
+                            destination, mimeType, SelectedTenant.TenantId);
+
+                        if (assetId != null) loaded++;
+                        else failed++;
+                    }
+                    catch (Exception ex)
+                    {
+                        failed++;
+                        System.Diagnostics.Debug.WriteLine($"[MainViewModel] LoadMapAsync - {file}: {ex.Message}");
+                    }
+                }
+
+                StatusIsWarning = failed > 0;
+                var parts = new List<string>();
+                if (loaded > 0) parts.Add($"{loaded} loaded");
+                if (failed > 0) parts.Add($"{failed} failed");
+                StatusMessage = $"Maps: {string.Join(", ", parts)}.";
+            }
+            catch (Exception ex)
+            {
+                StatusIsWarning = true;
+                StatusMessage = $"Error loading maps: {ex.Message}";
+                System.Diagnostics.Debug.WriteLine($"[MainViewModel] LoadMapAsync: {ex.Message}");
+            }
+        }
+
+        private async Task AssignMapAsync()
+        {
+            if (SelectedTenant == null)
+            {
+                StatusIsWarning = true;
+                StatusMessage = "Select a tenant first.";
+                return;
+            }
+
+            if (SelectedLocation == null)
+            {
+                StatusIsWarning = true;
+                StatusMessage = "Select a location first.";
+                return;
+            }
+
+            try
+            {
+                StatusIsWarning = false;
+                StatusMessage = "Loading available maps...";
+
+                var maps = await _supabaseService.GetMapVisualAssetsAsync(SelectedTenant.TenantId);
+
+                if (maps.Count == 0)
+                {
+                    StatusIsWarning = true;
+                    StatusMessage = "No maps available. Load map images first.";
+                    return;
+                }
+
+                var dialog = new Views.SelectMapDialog(maps);
+                dialog.Owner = Application.Current.MainWindow;
+
+                if (dialog.ShowDialog() != true) return;
+
+                StatusMessage = "Assigning map...";
+
+                var ok = await _supabaseService.AssignMapToLocationAsync(
+                    SelectedLocation.LocationId,
+                    dialog.SelectedMap!.VisualAssetId);
+
+                StatusIsWarning = !ok;
+                StatusMessage = ok
+                    ? $"Map assigned to '{SelectedLocation.LocationName}'."
+                    : "Failed to assign map.";
+            }
+            catch (Exception ex)
+            {
+                StatusIsWarning = true;
+                StatusMessage = $"Error assigning map: {ex.Message}";
+                System.Diagnostics.Debug.WriteLine($"[MainViewModel] AssignMapAsync: {ex.Message}");
+            }
+        }
+
+
 
         public event PropertyChangedEventHandler? PropertyChanged;
         protected void OnPropertyChanged([CallerMemberName] string? name = null)

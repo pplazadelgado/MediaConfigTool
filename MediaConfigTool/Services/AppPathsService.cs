@@ -3,51 +3,42 @@ using System.IO;
 
 namespace MediaConfigTool.Services
 {
-    ///<summary>
-    ///Centralizes all local application data paths.
-    ///Currently scaffoled for future phases - not actively used yn Phase 2
+    /// <summary>
+    /// Centralizes all local application data paths for Narrin Studio.
     /// </summary>
-    public class AppPathsService
+    public static class AppPathsService
     {
-        private const string AppFolderName = "MediaConfigTool";
-
-        ///<summary>
-        ///Root folder for all local app data.
-        /// Example: C:\Users\John\AppData\Local\MediaConfigTool
-        /// </summary>
-        public string AppDataRoot { get; }
-
-        /// <summary>
-        /// Folder for cached map snapshots and other visual assets.
-        /// Example: C:\Users\John\AppData\Local\MediaConfigTool\Assets
-        /// </summary>
-        public string AssetsFolder {  get; }
-
-        /// <summary>
-        /// Folder for local log files.
-        /// Example: C:\Users\John\AppData\Local\MediaConfigTool\Logs
-        /// </summary>
-        public string LogsFolder {  get; }
-
-        public AppPathsService() 
-        {
-            AppDataRoot = Path.Combine(
+        private static readonly string _baseFolder =
+            Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                AppFolderName);
+                "Narrin Studio");
 
-            AssetsFolder = Path.Combine(AppDataRoot, "Assets");
-            LogsFolder = Path.Combine(AppDataRoot, "Logs");
-        }
+        public static string AppDataRoot => _baseFolder;
+        public static string AssetsFolder => Path.Combine(_baseFolder, "Assets");
+        public static string LogsFolder => Path.Combine(_baseFolder, "Logs");
+        public static string MapsFolder => Path.Combine(_baseFolder, "maps");
 
         /// <summary>
         /// Creates all required local folders if they do not already exist.
         /// Safe to call multiple times.
         /// </summary>
-        public void EnsureFolderExist()
+        public static void EnsureFoldersExist()
         {
             Directory.CreateDirectory(AppDataRoot);
             Directory.CreateDirectory(AssetsFolder);
             Directory.CreateDirectory(LogsFolder);
+            Directory.CreateDirectory(MapsFolder);
+        }
+
+        /// <summary>
+        /// Returns the destination path for a map file.
+        /// Uses a timestamp prefix to avoid name collisions.
+        /// </summary>
+        public static string GetMapDestinationPath(string sourceFileName)
+        {
+            var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+            var safeName = $"{timestamp}_{Path.GetFileName(sourceFileName)}";
+            return Path.Combine(MapsFolder, safeName);
         }
     }
 }

@@ -12,6 +12,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
+using System.Windows.Controls;
 using System.Windows.Controls.Ribbon;
 
 namespace MediaConfigTool.Services
@@ -341,7 +342,7 @@ namespace MediaConfigTool.Services
                 var result = await _httpClient.GetFromJsonAsync<List<Location>>(url);
                 return result ?? new List<Location>();
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[SupabaseService] GetLocationAsync: {ex.Message}");
                 return new List<Location>();
@@ -366,14 +367,14 @@ namespace MediaConfigTool.Services
                 return doc.RootElement.ValueKind == JsonValueKind.Array
                     && doc.RootElement.GetArrayLength() > 0;
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[SupabaseService] MediaLocationExistsAsync {ex.Message}");
                 return false;
             }
         }
 
-        public async Task<bool> InsertMediaLocationAsync(string mediaAssetId, string locationId,string tenantId)
+        public async Task<bool> InsertMediaLocationAsync(string mediaAssetId, string locationId, string tenantId)
         {
             var now = DateTime.UtcNow.ToString("o");
             var payload = new
@@ -435,7 +436,7 @@ namespace MediaConfigTool.Services
                 var result = await _httpClient.GetFromJsonAsync<List<Event>>(url);
                 return result ?? new List<Event>();
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[SupabaseService] GetEventsAsync: {ex.Message}");
                 return new List<Event>();
@@ -454,7 +455,7 @@ namespace MediaConfigTool.Services
                 var result = await _httpClient.GetFromJsonAsync<List<Tag>>(url);
                 return result ?? new List<Tag>();
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[SupabaseService] GetTagsAsync: {ex.Message}");
                 return new List<Tag>();
@@ -585,7 +586,7 @@ namespace MediaConfigTool.Services
             }
         }
 
-        public async Task<bool> AssingPersonAsync( string mediaAssetId, string personId, string tenantId)
+        public async Task<bool> AssingPersonAsync(string mediaAssetId, string personId, string tenantId)
         {
             try
             {
@@ -620,7 +621,7 @@ namespace MediaConfigTool.Services
             }
         }
 
-        public async Task<bool> AssingEventAsync( string mediaAssetId, string eventId, string tenantId)
+        public async Task<bool> AssingEventAsync(string mediaAssetId, string eventId, string tenantId)
         {
             try
             {
@@ -648,7 +649,7 @@ namespace MediaConfigTool.Services
                 }
                 return true;
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[SupabaseService] AssignEventAsync: {ex.Message}");
                 return false;
@@ -683,7 +684,7 @@ namespace MediaConfigTool.Services
                 }
                 return true;
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[SupabaseService] AssignTagAsync: {ex.Message}");
                 return false;
@@ -935,7 +936,7 @@ namespace MediaConfigTool.Services
             }
         }
 
-        public async Task<bool> UpdateLocationAsync( string locationId, string name, string locationType)
+        public async Task<bool> UpdateLocationAsync(string locationId, string name, string locationType)
         {
             try
             {
@@ -993,6 +994,149 @@ namespace MediaConfigTool.Services
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[SupabaseService] DeleteLocationAsync: {ex.Message}");
+                return false;
+            }
+        }
+
+        public async Task<string?> CreateVisualAssetAsync(string assetUri, string mimeType, string tenantId)
+        {
+            try
+            {
+                var now = DateTime.UtcNow.ToString("o");
+                var payload = new
+                {
+                    asset_type = "map_snapshot",
+                    asset_uri = assetUri,
+                    mime_type = mimeType,
+                    is_system_defined = false,
+                    tenant_id = tenantId,
+                    created_at = now,
+                    updated_at = now
+                };
+
+                var json = JsonSerializer.Serialize(payload);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                var request = new HttpRequestMessage(HttpMethod.Post, $"{BaseUrl}/rest/v1/visual_asset");
+                request.Headers.Add("Prefer", "retur=minimal");
+                request.Content = content;
+
+                var response = await _httpClient.SendAsync(request);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var error = await response.Content.ReadAsStringAsync();
+                    throw new Exception($"HTTP {(int)response.StatusCode}: {error}");
+                }
+
+                var body = await response.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(body);
+
+                string? id = null;
+                if (doc.RootElement.ValueKind == JsonValueKind.Array)
+                    id = doc.RootElement[0].GetProperty("visual_asset_id").GetString();
+                else if (doc.RootElement.ValueKind == JsonValueKind.Object)
+                    id = doc.RootElement.GetProperty("visual_asset_id").GetString();
+
+                return id;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SupabaseService] CreateVisualAssetAsync: {ex.Message}");
+                return null;
+            }
+        }
+
+        public async Task<List<VisualAsset>> GetMapVisualAssetsAsync(string tenantId)
+        {
+            try
+            {
+                var url = $"{BaseUrl}/rest/v1/visual_asset" +
+                  $"?select=visual_asset_id,asset_uri,asset_type,mime_type,tenant_id" +
+                  $"&tenant_id=eq.{tenantId}" +
+                  $"&asset_type=eq.map_snapshot" +
+                  $"&order=asset_uri.asc";
+
+                var result = await _httpClient.GetFromJsonAsync<List<VisualAsset>>(url);
+                return result ?? new List<VisualAsset>();
+            }
+            catch(Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SupabaseService] GetMapVisualAssetsAsync: {ex.Message}");
+                return new List<VisualAsset>();
+            }
+        }
+
+        public async Task<bool> AssingmapToLocationAsync(string locationId, string visualAssetId)
+        {
+            try
+            {
+                var now = DateTime.UtcNow.ToString("o");
+                var payload = new
+                {
+                    map_visual_asset_id = visualAssetId,
+                    updated_at = now
+                };
+
+                var json = JsonSerializer.Serialize(payload);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                var url = $"{BaseUrl}/rest/v1/location?location_id=eq.{locationId}";
+                var request = new HttpRequestMessage(HttpMethod.Patch, url);
+                request.Headers.Add("Prefer", "return=minimal");
+                request.Content = content;
+
+                var response = await _httpClient.SendAsync(request);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var error = await response.Content.ReadAsStringAsync();
+                    throw new Exception($"HTTP {(int)response.StatusCode}: {error}");
+                }
+
+                return true;
+            }
+            catch(Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SupabaseService] AssignMapToLocationAsync: {ex.Message}");
+                return false;
+            }
+        }
+        
+
+        public async Task<bool> AssignMapToLocationAsync(
+            string locationId, string visualAssetId)
+        {
+            try
+            {
+                var now = DateTime.UtcNow.ToString("o");
+                var payload = new
+                {
+                    map_visual_asset_id = visualAssetId,
+                    updated_at = now
+                };
+
+                var json = JsonSerializer.Serialize(payload);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                var url = $"{BaseUrl}/rest/v1/location?location_id=eq.{locationId}";
+                var request = new HttpRequestMessage(HttpMethod.Patch, url);
+                request.Headers.Add("Prefer", "return=minimal");
+                request.Content = content;
+
+                var response = await _httpClient.SendAsync(request);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var error = await response.Content.ReadAsStringAsync();
+                    throw new Exception($"HTTP {(int)response.StatusCode}: {error}");
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SupabaseService] AssignMapToLocationAsync: {ex.Message}");
                 return false;
             }
         }
