@@ -603,7 +603,7 @@ namespace MediaConfigTool.Services
                 var json = JsonSerializer.Serialize(payload);
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
                 var request = new HttpRequestMessage(HttpMethod.Post, $"{BaseUrl}/rest/v1/media_person");
-                request.Headers.Add("Preder", "return=minimal");
+                request.Headers.Add("Prefer", "return=minimal");
                 request.Content = content;
 
                 var response = await _httpClient.SendAsync(request);
@@ -1018,7 +1018,7 @@ namespace MediaConfigTool.Services
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
 
                 var request = new HttpRequestMessage(HttpMethod.Post, $"{BaseUrl}/rest/v1/visual_asset");
-                request.Headers.Add("Prefer", "retur=minimal");
+                request.Headers.Add("Prefer", "return=minimal");
                 request.Content = content;
 
                 var response = await _httpClient.SendAsync(request);
@@ -1067,41 +1067,7 @@ namespace MediaConfigTool.Services
             }
         }
 
-        public async Task<bool> AssingmapToLocationAsync(string locationId, string visualAssetId)
-        {
-            try
-            {
-                var now = DateTime.UtcNow.ToString("o");
-                var payload = new
-                {
-                    map_visual_asset_id = visualAssetId,
-                    updated_at = now
-                };
-
-                var json = JsonSerializer.Serialize(payload);
-                var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-                var url = $"{BaseUrl}/rest/v1/location?location_id=eq.{locationId}";
-                var request = new HttpRequestMessage(HttpMethod.Patch, url);
-                request.Headers.Add("Prefer", "return=minimal");
-                request.Content = content;
-
-                var response = await _httpClient.SendAsync(request);
-
-                if (!response.IsSuccessStatusCode)
-                {
-                    var error = await response.Content.ReadAsStringAsync();
-                    throw new Exception($"HTTP {(int)response.StatusCode}: {error}");
-                }
-
-                return true;
-            }
-            catch(Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[SupabaseService] AssignMapToLocationAsync: {ex.Message}");
-                return false;
-            }
-        }
+       
         
 
         public async Task<bool> AssignMapToLocationAsync(

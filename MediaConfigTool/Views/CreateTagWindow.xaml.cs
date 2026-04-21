@@ -50,14 +50,16 @@ namespace MediaConfigTool.Views
 
             if (CategoryBox.SelectedItem is not TagCategory selectedCategory)
             {
-                CategoryBox.BorderBrush = System.Windows.Media.Brushes.Red;
+                CategoryBorder.BorderBrush = System.Windows.Media.Brushes.Red;
                 return;
             }
 
             TagName = NameBox.Text.Trim();
             TagCategoryId = selectedCategory.TagCategoryId;
-            Description = string.IsNullOrWhiteSpace(DescriptionBox.Text) ? null : DescriptionBox.Text.Trim();
-            ColorHex = string.IsNullOrWhiteSpace(ColorHexBox.Text) ? null : ColorHexBox.Text.Trim();
+            Description = string.IsNullOrWhiteSpace(DescriptionBox.Text)
+                ? null : DescriptionBox.Text.Trim();
+            ColorHex = string.IsNullOrWhiteSpace(ColorHexBox.Text)
+                ? null : ColorHexBox.Text.Trim();
 
             DialogResult = true;
             Close();
