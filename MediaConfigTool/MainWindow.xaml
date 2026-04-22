@@ -726,8 +726,11 @@
                                 </DockPanel>
                             </Expander.Header>
                             <StackPanel Margin="0,8,0,0">
-                                <ListBox ItemsSource="{Binding Locations}"
-                                         SelectedItem="{Binding SelectedLocation}"
+                                <ListBox x:Name="LocationListBox"
+                                     ItemsSource="{Binding Locations}"
+                                     SelectedItem="{Binding SelectedLocation}"
+                                     SelectionMode="Extended"
+                                     SelectionChanged="LocationListBox_SelectionChanged"
                                          Background="Transparent"
                                          BorderThickness="0"
                                          MaxHeight="200">
@@ -852,8 +855,11 @@
                                 </DockPanel>
                             </Expander.Header>
                             <StackPanel Margin="0,8,0,0">
-                                <ListBox ItemsSource="{Binding Persons}"
+                                <ListBox x:Name="PersonListBox"
+                                         ItemsSource="{Binding Persons}"
                                          SelectedItem="{Binding SelectedPerson}"
+                                         SelectionMode="Extended"
+                                         SelectionChanged="PersonListBox_SelectionChanged"
                                          Background="Transparent"
                                          BorderThickness="0"
                                          MaxHeight="200">
@@ -966,8 +972,11 @@
                                 </DockPanel>
                             </Expander.Header>
                             <StackPanel Margin="0,8,0,0">
-                                <ListBox ItemsSource="{Binding Events}"
+                                <ListBox x:Name="EventListBox"
+                                         ItemsSource="{Binding Events}"
                                          SelectedItem="{Binding SelectedEvent}"
+                                         SelectionMode="Extended"
+                                         SelectionChanged="EventListBox_SelectionChanged"
                                          Background="Transparent"
                                          BorderThickness="0"
                                          MaxHeight="200">
@@ -1080,8 +1089,11 @@
                                 </DockPanel>
                             </Expander.Header>
                             <StackPanel Margin="0,8,0,0">
-                                <ListBox ItemsSource="{Binding Tags}"
+                                <ListBox x:Name="TagListBox"
+                                         ItemsSource="{Binding Tags}"
                                          SelectedItem="{Binding SelectedTag}"
+                                         SelectionMode="Extended"
+                                         SelectionChanged="TagListBox_SelectionChanged"
                                          Background="Transparent"
                                          BorderThickness="0"
                                          MaxHeight="200">

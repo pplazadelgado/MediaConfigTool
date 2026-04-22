@@ -129,6 +129,12 @@ namespace MediaConfigTool.ViewModels
         public Visibility FolderPanelVisibility =>
             _isFolderPanelOpen ? Visibility.Visible : Visibility.Collapsed;
 
+        // Colecciones para selección múltiple de metadata (Phase 4)
+        public ObservableCollection<Location> SelectedLocations { get; } = new();
+        public ObservableCollection<Person> SelectedPersons { get; } = new();
+        public ObservableCollection<Event> SelectedEvents { get; } = new();
+        public ObservableCollection<Tag> SelectedTags { get; } = new();
+
         public ICommand BrowseFolderCommand { get; }
         public ICommand CloseFolderPanelCommand { get; }
         public ICommand ImportCommand { get; }
@@ -173,25 +179,28 @@ namespace MediaConfigTool.ViewModels
                 async _ => await AssignLocationsAsync());
 
             AssignPersonCommand = new RelayCommand(
-                async _ => await AssignMetadataAsync(
-                    "person",
-                    SelectedPerson?.PersonId,
-                    SelectedPerson?.DisplayName,
-                    (assetId, metaId) => _supabaseService.AssingPersonAsync(assetId, metaId, SelectedTenant!.TenantId)));
+    async _ => await AssignMetadataAsync(
+        "person",
+        SelectedPersons.Select(p => p.PersonId),
+        null,
+        (assetId, metaId) => _supabaseService.AssingPersonAsync(assetId, metaId, SelectedTenant!.TenantId),
+        (assetId, metaId) => _supabaseService.MediaPersonEsixtsAsync(assetId, metaId)));
 
             AssignEventCommand = new RelayCommand(
                 async _ => await AssignMetadataAsync(
                     "event",
-                    SelectedEvent?.EventId,
-                    SelectedEvent?.EventName,
-                    (assetId, metaId) => _supabaseService.AssingEventAsync(assetId, metaId, SelectedTenant!.TenantId)));
+                    SelectedEvents.Select(e => e.EventId),
+                    null,
+                    (assetId, metaId) => _supabaseService.AssingEventAsync(assetId, metaId, SelectedTenant!.TenantId),
+                    (assetId, metaId) => _supabaseService.MediaEventExistsAsync(assetId, metaId)));
 
             AssignTagCommand = new RelayCommand(
                 async _ => await AssignMetadataAsync(
                     "tag",
-                    SelectedTag?.TagId,
-                    SelectedTag?.TagName,
-                    (assetId, metaId) => _supabaseService.AssingTagAsync(assetId, metaId, SelectedTenant!.TenantId)));
+                    SelectedTags.Select(t => t.TagId),
+                    null,
+                    (assetId, metaId) => _supabaseService.AssingTagAsync(assetId, metaId, SelectedTenant!.TenantId),
+                    (assetId, metaId) => _supabaseService.MediaTagExistsAsync(assetId, metaId)));
 
             CreateLocationCommand = new RelayCommand(
                 async _ => await CreateLocationAsync());
@@ -398,6 +407,43 @@ namespace MediaConfigTool.ViewModels
             OnPropertyChanged(nameof(SelectedNotImportedCount));
         }
 
+        public void OnLocationSelectionChanged(IList selectedItems)
+        {
+            SelectedLocations.Clear();
+            foreach (var item in selectedItems)
+                if (item is Location loc) SelectedLocations.Add(loc);
+
+            // Mantiene SelectedLocation sincronizado para Edit/Delete
+            SelectedLocation = SelectedLocations.FirstOrDefault();
+        }
+
+        public void OnPersonSelectionChanged(IList selectedItems)
+        {
+            SelectedPersons.Clear();
+            foreach (var item in selectedItems)
+                if (item is Person p) SelectedPersons.Add(p);
+
+            SelectedPerson = SelectedPersons.FirstOrDefault();
+        }
+
+        public void OnEventSelectionChanged(IList selectedItems)
+        {
+            SelectedEvents.Clear();
+            foreach (var item in selectedItems)
+                if (item is Event e) SelectedEvents.Add(e);
+
+            SelectedEvent = SelectedEvents.FirstOrDefault();
+        }
+
+        public void OnTagSelectionChanged(IList selectedItems)
+        {
+            SelectedTags.Clear();
+            foreach (var item in selectedItems)
+                if (item is Tag t) SelectedTags.Add(t);
+
+            SelectedTag = SelectedTags.FirstOrDefault();
+        }
+
         private async Task CheckImportedStatusAsync()
         {
             if (SelectedTenant == null || MediaFiles.Count == 0) return;
@@ -461,24 +507,65 @@ namespace MediaConfigTool.ViewModels
             }
         }
 
+        // Determina qué imágenes son objetivo de una asignación según las reglas de Phase 4:
+        // - Si hay imágenes seleccionadas: usa solo las importadas de esa selección
+        // - Si no hay selección: usa todas las importadas visibles en la galería
+        // - Devuelve null si no hay ningún objetivo válido (el caller muestra el mensaje)
+        private List<MediaFile>? GetAssignmentTargets(out string? warningMessage)
+        {
+            warningMessage = null;
+
+            bool hasSelection = SelectedMediaFiles.Any();
+
+            if (hasSelection)
+            {
+                // Regla 1 y 5: hay selección → usar solo las importadas de esa selección
+                var targets = SelectedMediaFiles
+                    .Where(f => f.IsImported && f.MediaAssetId != null)
+                    .ToList();
+
+                if (targets.Count == 0)
+                {
+                    // Regla 3 aplicada a selección: ninguna de las seleccionadas está importada
+                    warningMessage = "No imported images found in this folder. Please import images first.";
+                    return null;
+                }
+
+                return targets;
+            }
+            else
+            {
+                // Regla 2: sin selección → usar todas las importadas visibles
+                var targets = MediaFiles
+                    .Where(f => f.IsImported && f.MediaAssetId != null)
+                    .ToList();
+
+                if (targets.Count == 0)
+                {
+                    // Regla 3: no hay ninguna importada visible en la carpeta
+                    warningMessage = "No imported images found in this folder. Please import images first.";
+                    return null;
+                }
+
+                return targets;
+            }
+        }
+
+
         private async Task AssignLocationsAsync()
         {
-            if (SelectedLocation == null)
+            if (!SelectedLocations.Any())
             {
                 StatusIsWarning = true;
                 StatusMessage = "Select a location first.";
                 return;
             }
 
-            var pool = SelectedMediaFiles.Any()
-                ? SelectedMediaFiles
-                : (IEnumerable<MediaFile>)MediaFiles;
-
-            var targets = pool.Where(f => f.IsImported && f.MediaAssetId != null).ToList();
-            if (targets.Count == 0)
+            var targets = GetAssignmentTargets(out var warning);
+            if (targets == null)
             {
                 StatusIsWarning = true;
-                StatusMessage = "No imported images found.";
+                StatusMessage = warning!;
                 return;
             }
 
@@ -488,32 +575,32 @@ namespace MediaConfigTool.ViewModels
             string? lastError = null;
 
             StatusIsWarning = false;
-            StatusMessage = $"Assigning location to {targets.Count} image(s)...";
+            StatusMessage = $"Assigning {SelectedLocations.Count} location(s) to {targets.Count} image(s)...";
 
-            foreach (var file in targets)
+            foreach (var location in SelectedLocations)
             {
-                try
+                foreach (var file in targets)
                 {
-                    var exists = await _supabaseService.MediaLocationExistsAsync(
-                        file.MediaAssetId!, SelectedLocation.LocationId);
-
-                    if (exists)
+                    try
                     {
-                        skipped++;
-                        continue;
+                        var exists = await _supabaseService.MediaLocationExistsAsync(
+                            file.MediaAssetId!, location.LocationId);
+
+                        if (exists) { skipped++; continue; }
+
+                        var ok = await _supabaseService.InsertMediaLocationAsync(
+                            file.MediaAssetId!, location.LocationId, SelectedTenant!.TenantId);
+
+                        if (ok) assigned++;
+                        else failed++;
                     }
-
-                    var ok = await _supabaseService.InsertMediaLocationAsync(
-                        file.MediaAssetId!, SelectedLocation.LocationId, SelectedTenant!.TenantId);
-
-                    if (ok) assigned++;
-                    else failed++;
-                }
-                catch (Exception ex)
-                {
-                    failed++;
-                    lastError = ex.Message;
-                    System.Diagnostics.Debug.WriteLine($"[MainViewModel] AssignLocationsAsync - {file.FileName}: {ex.Message}");
+                    catch (Exception ex)
+                    {
+                        failed++;
+                        lastError = ex.Message;
+                        System.Diagnostics.Debug.WriteLine(
+                            $"[MainViewModel] AssignLocationsAsync - {file.FileName}: {ex.Message}");
+                    }
                 }
             }
 
@@ -522,61 +609,73 @@ namespace MediaConfigTool.ViewModels
             if (assigned > 0) parts.Add($"{assigned} assigned");
             if (skipped > 0) parts.Add($"{skipped} skipped");
             if (failed > 0) parts.Add($"{failed} failed");
-            StatusMessage = $"Location '{SelectedLocation.LocationName}': {string.Join(", ", parts)}"
+            StatusMessage = $"Locations: {string.Join(", ", parts)}"
                 + (lastError != null ? $" — {lastError}" : ".");
         }
 
         private async Task AssignMetadataAsync(
     string metadataType,
-    string? metadataId,
-    string? metadataName,
-    Func<string, string, Task<bool>> assignFunc)
+    IEnumerable<string> metadataIds,
+    string? labelForStatus,
+    Func<string, string, Task<bool>> assignFunc,
+    Func<string, string, Task<bool>>? existsFunc = null)
         {
-            if (metadataId == null)
+            if (!metadataIds.Any())
             {
                 StatusIsWarning = true;
                 StatusMessage = $"Select a {metadataType} first.";
                 return;
             }
 
-            var pool = SelectedMediaFiles.Any()
-                ? SelectedMediaFiles
-                : (IEnumerable<MediaFile>)MediaFiles;
-
-            var targets = pool.Where(f => f.IsImported && f.MediaAssetId != null).ToList();
-            if (targets.Count == 0)
+            var targets = GetAssignmentTargets(out var warning);
+            if (targets == null)
             {
                 StatusIsWarning = true;
-                StatusMessage = "No imported images found.";
+                StatusMessage = warning!;
                 return;
             }
 
             int assigned = 0;
+            int skipped = 0;
             int failed = 0;
+            string? lastError = null;
 
             StatusIsWarning = false;
             StatusMessage = $"Assigning {metadataType} to {targets.Count} image(s)...";
 
-            foreach (var file in targets)
+            foreach (var metadataId in metadataIds)
             {
-                try
+                foreach (var file in targets)
                 {
-                    var ok = await assignFunc(file.MediaAssetId!, metadataId);
-                    if (ok) assigned++;
-                    else failed++;
-                }
-                catch (Exception ex)
-                {
-                    failed++;
-                    System.Diagnostics.Debug.WriteLine($"[MainViewModel] Assign{metadataType} - {file.FileName}: {ex.Message}");
+                    try
+                    {
+                        if (existsFunc != null)
+                        {
+                            var exists = await existsFunc(file.MediaAssetId!, metadataId);
+                            if (exists) { skipped++; continue; }
+                        }
+
+                        var ok = await assignFunc(file.MediaAssetId!, metadataId);
+                        if (ok) assigned++;
+                        else failed++;
+                    }
+                    catch (Exception ex)
+                    {
+                        failed++;
+                        lastError = ex.Message;
+                        System.Diagnostics.Debug.WriteLine(
+                            $"[MainViewModel] Assign{metadataType} - {file.FileName}: {ex.Message}");
+                    }
                 }
             }
 
             StatusIsWarning = failed > 0;
             var parts = new List<string>();
             if (assigned > 0) parts.Add($"{assigned} assigned");
+            if (skipped > 0) parts.Add($"{skipped} skipped");
             if (failed > 0) parts.Add($"{failed} failed");
-            StatusMessage = $"{metadataType} '{metadataName}': {string.Join(", ", parts)}.";
+            StatusMessage = $"{metadataType}: {string.Join(", ", parts)}"
+                + (lastError != null ? $" — {lastError}" : ".");
         }
 
         private async Task LoadPersonsAsync(string tenantId)
@@ -1176,6 +1275,14 @@ namespace MediaConfigTool.ViewModels
             {
                 StatusIsWarning = true;
                 StatusMessage = "Select a folder first using Browse Folder.";
+                return;
+            }
+
+            if (MediaFiles.Any())
+            {
+                StatusIsWarning = true;
+                StatusMessage = "The current folder contains gallery images. " +
+                                "Select a folder with map images only using Browse Folder, then click Load Map.";
                 return;
             }
 

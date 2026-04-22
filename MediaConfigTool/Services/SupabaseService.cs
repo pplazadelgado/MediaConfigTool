@@ -3,6 +3,7 @@ using MediaConfigTool.Models;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.DirectoryServices;
 using System.IO;
 using System.Net.Http;
 using System.Net.Http.Json;
@@ -1121,6 +1122,81 @@ namespace MediaConfigTool.Services
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[SupabaseService] VisualAssetExistsAsync: {ex.Message}");
+                return false;
+            }
+        }
+
+        public async Task<bool> MediaPersonEsixtsAsync(string mediaAssetId, string personId)
+        {
+            try
+            {
+                var url = $"{BaseUrl}/rest/v1/media_person" +
+                  $"?media_asset_id=eq.{mediaAssetId}" +
+                  $"&person_id=eq.{personId}" +
+                  $"&select=media_person_id" +
+                  $"&limit=1";
+
+                var response = await _httpClient.GetAsync(url);
+                if (!response.IsSuccessStatusCode) return false;
+
+                var body = await response.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(body);
+                return doc.RootElement.ValueKind == JsonValueKind.Array
+                    && doc.RootElement.GetArrayLength() > 0;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SupabaseService] MediaPersonExistsAsync: {ex.Message}");
+                return false;
+            }
+        }
+
+        public async Task<bool> MediaEventExistsAsync(string mediaAssetId, string eventId)
+        {
+            try
+            {
+                var url = $"{BaseUrl}/rest/v1/media_event" +
+                      $"?media_asset_id=eq.{mediaAssetId}" +
+                      $"&event_id=eq.{eventId}" +
+                      $"&select=media_event_id" +
+                      $"&limit=1";
+
+                var response = await _httpClient.GetAsync(url);
+                if (!response.IsSuccessStatusCode) return false;
+
+                var body = await response.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(body);
+                return doc.RootElement.ValueKind == JsonValueKind.Array
+                    && doc.RootElement.GetArrayLength() > 0;
+            }
+            catch(Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SupabaseService] MediaEventExistsAsync: {ex.Message}");
+                return false;
+            }
+        }
+
+        public async Task<bool> MediaTagExistsAsync(string mediaAssetId, string tagId)
+        {
+            try
+            {
+                var url = $"{BaseUrl}/rest/v1/media_tag" +
+                  $"?media_asset_id=eq.{mediaAssetId}" +
+                  $"&tag_id=eq.{tagId}" +
+                  $"&select=media_tag_id" +
+                  $"&limit=1";
+
+                var response = await _httpClient.GetAsync(url);
+                if (!response.IsSuccessStatusCode) return false;
+
+                var body = await response.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(body);
+                return doc.RootElement.ValueKind == JsonValueKind.Array
+                    && doc.RootElement.GetArrayLength() > 0;
+            }
+            catch(Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SupabaseService] MediaTagExistsAsync: {ex.Message}");
                 return false;
             }
         }
