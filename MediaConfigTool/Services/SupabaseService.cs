@@ -1200,5 +1200,44 @@ namespace MediaConfigTool.Services
                 return false;
             }
         }
+
+        public async Task<bool> CreateTagCategoryAsync(string name, string categoryType, string tenantId)
+        {
+            try
+            {
+                var now = DateTime.UtcNow.ToString("o");
+                var payload = new
+                {
+                    name,
+                    category_type = categoryType,
+                    tenant_id = tenantId,
+                    is_system_defined = false,
+                    created_at = now
+                };
+
+                var json = JsonSerializer.Serialize(payload);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                var request = new HttpRequestMessage(HttpMethod.Post, $"{BaseUrl}/rest/v1/tag_category");
+                request.Headers.Add("Prefer", "return=minimal");
+                request.Content = content;
+
+                var response = await _httpClient.SendAsync(request);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var error = await response.Content.ReadAsStringAsync();
+                    throw new Exception($"HTTP {(int)response.StatusCode}: {error}");
+                }
+                return true;
+            }
+            catch(Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SupabaseService] CreateTagCategoryAsync: {ex.Message}");
+                return false;
+            }
+        }
+
+        
     }
 }

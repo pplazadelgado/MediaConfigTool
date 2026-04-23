@@ -88,6 +88,20 @@ namespace MediaConfigTool.ViewModels
             set { _selectedFolder = value; OnPropertyChanged(); }
         }
 
+        private MediaFile? _selectedMedia;
+        public MediaFile? SelectedMedia
+        {
+            get => _selectedMedia;
+            set
+            {
+                _selectedMedia = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(CanRender));
+            }
+        }
+
+        public bool CanRender => SelectedMedia?.MediaAssetId != null;
+
         private bool _isImporting;
         public bool IsImporting
         {
@@ -153,10 +167,12 @@ namespace MediaConfigTool.ViewModels
         public ICommand EditEventCommand { get; }
         public ICommand DeleteEventCommand { get; }
         public ICommand CreateTagCommand { get; }
+        public ICommand CreateTagCategoryCommand { get; }
         public ICommand EditTagCommand { get; }
         public ICommand DeleteTagCommand { get; }
         public ICommand LoadMapCommand { get; }
         public ICommand AssignMapCommand { get; }
+        public ICommand RenderImageCommand { get; }
 
         public MainViewModel()
         {
@@ -226,6 +242,8 @@ namespace MediaConfigTool.ViewModels
 
             CreateTagCommand = new RelayCommand(
                 async _ => await CreateTagAsync());
+            CreateTagCategoryCommand = new RelayCommand(
+                async _ => CreateTagCategoryAsync());
             EditTagCommand = new RelayCommand(
                 async _ => await EditTagAsync());
             DeleteTagCommand = new RelayCommand(
@@ -235,7 +253,8 @@ namespace MediaConfigTool.ViewModels
 
             AssignMapCommand = new RelayCommand(
                 async _ => await AssignMapAsync());
-
+            RenderImageCommand = new RelayCommand(
+                _ => RenderImage());
         }
 
         public async Task LoadTenantsAsync()
@@ -1159,6 +1178,49 @@ namespace MediaConfigTool.ViewModels
             }
         }
 
+        public async Task CreateTagCategoryAsync()
+        {
+            if(SelectedTenant == null)
+            {
+                StatusIsWarning = true;
+                StatusMessage = "Select a tenant first.";
+                return;
+            }
+
+            var dialog = new Views.CreateTagCategoryWindow();
+            dialog.Owner = Application.Current.MainWindow;
+
+            if (dialog.ShowDialog() != true) return;
+
+            try
+            {
+                StatusIsWarning = false;
+                StatusMessage = "Creating tag category...";
+
+                var ok = await _supabaseService.CreateTagCategoryAsync(
+                    dialog.CategoryName,
+                    "custom_filter",
+                    SelectedTenant.TenantId);
+
+                if (ok)
+                {
+                    StatusMessage = $"Tag category '{dialog.CategoryName}' created.";
+                    await LoadTagCategoriesAsync(SelectedTenant.TenantId);
+                }
+                else
+                {
+                    StatusIsWarning = true;
+                    StatusMessage = "Failed to create tag category.";
+                }
+            }
+            catch (Exception ex)
+            {
+                StatusIsWarning = true;
+                StatusMessage = $"Error creating tag category: {ex.Message}";
+                System.Diagnostics.Debug.WriteLine($"[MainViewModel] CreateTagCategoryAsync: {ex.Message}");
+            }
+        }
+
         private async Task EditTagAsync()
         {
             if (SelectedTenant == null) return;
@@ -1417,7 +1479,11 @@ namespace MediaConfigTool.ViewModels
             }
         }
 
-
+        private void RenderImage()
+        {
+            // Phase 5 - Step 3 will implement this
+            StatusMessage = $"Ready to render: {SelectedMedia?.FileName}";
+        }
 
         public event PropertyChangedEventHandler? PropertyChanged;
         protected void OnPropertyChanged([CallerMemberName] string? name = null)
