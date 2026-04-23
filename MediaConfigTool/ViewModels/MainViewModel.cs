@@ -10,6 +10,7 @@ using System.Windows.Input;
 using MediaConfigTool.Models;
 using MediaConfigTool.Services;
 using System.Collections;
+using System.Text;
 
 namespace MediaConfigTool.ViewModels
 {
@@ -1479,10 +1480,27 @@ namespace MediaConfigTool.ViewModels
             }
         }
 
-        private void RenderImage()
+        private async Task RenderImage()
         {
-            // Phase 5 - Step 3 will implement this
-            StatusMessage = $"Ready to render: {SelectedMedia?.FileName}";
+            if (SelectedMedia?.MediaAssetId == null || SelectedTenant == null) return;
+
+            StatusMessage = "Loadion metadata...";
+            StatusIsWarning = false;
+
+            var renderData = await _supabaseService.GetMediaRenderDataAsync(
+                SelectedMedia.MediaAssetId,
+                SelectedTenant.TenantId,
+                SelectedMedia.FullPath,
+                SelectedMedia.CaptureTimestamp);
+
+            if (renderData != null)
+            {
+                StatusIsWarning = true ;
+                StatusMessage = "Could not load metadata for render.";
+                return;
+            }
+
+            StatusMessage = $"Metadata loades for: {SelectedMedia.FileName}";
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;

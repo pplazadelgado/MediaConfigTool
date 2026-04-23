@@ -1238,6 +1238,188 @@ namespace MediaConfigTool.Services
             }
         }
 
-        
+        public async Task<MediaRenderData?> GetMediaRenderDataAsync(string mediaAssetId, string tenantId, string fullPath, DateTime? captureTimestamp)
+        {
+            try
+            {
+                var data = new MediaRenderData
+                {
+                    MediaAssetId = mediaAssetId,
+                    FullPath = fullPath,
+                    CaptureTimestamp = captureTimestamp
+                };
+
+                // Location + map
+                var locationUrl = $"{BaseUrl}/rest/v1/media_location" +
+                                  $"?media_asset_id=eq.{mediaAssetId}" +
+                                  $"&tenant_id=eq.{tenantId}" +
+                                  $"&select=location_id" +
+                                  $"&limit=1";
+
+                var locationResponse = await _httpClient.GetAsync(locationUrl);
+                if (locationResponse.IsSuccessStatusCode)
+                {
+                    var locationBody = await locationResponse.Content.ReadAsStringAsync();
+                    using var locationDoc = JsonDocument.Parse(locationBody);
+                    if (locationDoc.RootElement.GetArrayLength() > 0)
+                    {
+                        var locationId = locationDoc.RootElement[0]
+                            .GetProperty("location_id").GetString();
+
+                        if (!string.IsNullOrEmpty(locationId))
+                        {
+                            var locUrl = $"{BaseUrl}/rest/v1/location" +
+                                         $"?location_id=eq.{locationId}" +
+                                         $"&select=location_name,map_visual_asset_id" +
+                                         $"&limit=1";
+
+                            var locResponse = await _httpClient.GetAsync(locUrl);
+                            if (locResponse.IsSuccessStatusCode)
+                            {
+                                var locBody = await locResponse.Content.ReadAsStringAsync();
+                                using var locDoc = JsonDocument.Parse(locBody);
+                                if (locDoc.RootElement.GetArrayLength() > 0)
+                                {
+                                    var locEl = locDoc.RootElement[0];
+                                    data.LocationName = locEl.TryGetProperty("location_name", out var ln)
+                                        ? ln.GetString() : null;
+
+                                    if (locEl.TryGetProperty("map_visual_asset_id", out var mapId)
+                                        && mapId.ValueKind != JsonValueKind.Null)
+                                    {
+                                        var mapUrl = $"{BaseUrl}/rest/v1/visual_asset" +
+                                                     $"?visual_asset_id=eq.{mapId.GetString()}" +
+                                                     $"&select=asset_uri" +
+                                                     $"&limit=1";
+
+                                        var mapResponse = await _httpClient.GetAsync(mapUrl);
+                                        if (mapResponse.IsSuccessStatusCode)
+                                        {
+                                            var mapBody = await mapResponse.Content.ReadAsStringAsync();
+                                            using var mapDoc = JsonDocument.Parse(mapBody);
+                                            if (mapDoc.RootElement.GetArrayLength() > 0)
+                                                data.MapAssetUri = mapDoc.RootElement[0]
+                                                    .GetProperty("asset_uri").GetString();
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Persons
+                var personsUrl = $"{BaseUrl}/rest/v1/media_person" +
+                                 $"?media_asset_id=eq.{mediaAssetId}" +
+                                 $"&tenant_id=eq.{tenantId}" +
+                                 $"&select=person_id";
+
+                var personsResponse = await _httpClient.GetAsync(personsUrl);
+                if (personsResponse.IsSuccessStatusCode)
+                {
+                    var personsBody = await personsResponse.Content.ReadAsStringAsync();
+                    using var personsDoc = JsonDocument.Parse(personsBody);
+                    foreach (var p in personsDoc.RootElement.EnumerateArray())
+                    {
+                        var personId = p.GetProperty("person_id").GetString();
+                        if (string.IsNullOrEmpty(personId)) continue;
+
+                        var personUrl = $"{BaseUrl}/rest/v1/person" +
+                                        $"?person_id=eq.{personId}" +
+                                        $"&select=display_name&limit=1";
+
+                        var personResponse = await _httpClient.GetAsync(personUrl);
+                        if (!personResponse.IsSuccessStatusCode) continue;
+
+                        var personBody = await personResponse.Content.ReadAsStringAsync();
+                        using var personDoc = JsonDocument.Parse(personBody);
+                        if (personDoc.RootElement.GetArrayLength() > 0)
+                        {
+                            var name = personDoc.RootElement[0]
+                                .GetProperty("display_name").GetString();
+                            if (!string.IsNullOrEmpty(name))
+                                data.PersonNames.Add(name);
+                        }
+                    }
+                }
+
+                // Events
+                var eventsUrl = $"{BaseUrl}/rest/v1/media_event" +
+                                $"?media_asset_id=eq.{mediaAssetId}" +
+                                $"&tenant_id=eq.{tenantId}" +
+                                $"&select=event_id";
+
+                var eventsResponse = await _httpClient.GetAsync(eventsUrl);
+                if (eventsResponse.IsSuccessStatusCode)
+                {
+                    var eventsBody = await eventsResponse.Content.ReadAsStringAsync();
+                    using var eventsDoc = JsonDocument.Parse(eventsBody);
+                    foreach (var e in eventsDoc.RootElement.EnumerateArray())
+                    {
+                        var eventId = e.GetProperty("event_id").GetString();
+                        if (string.IsNullOrEmpty(eventId)) continue;
+
+                        var eventUrl = $"{BaseUrl}/rest/v1/event" +
+                                       $"?event_id=eq.{eventId}" +
+                                       $"&select=event_name&limit=1";
+
+                        var eventResponse = await _httpClient.GetAsync(eventUrl);
+                        if (!eventResponse.IsSuccessStatusCode) continue;
+
+                        var eventBody = await eventResponse.Content.ReadAsStringAsync();
+                        using var eventDoc = JsonDocument.Parse(eventBody);
+                        if (eventDoc.RootElement.GetArrayLength() > 0)
+                        {
+                            var name = eventDoc.RootElement[0]
+                                .GetProperty("event_name").GetString();
+                            if (!string.IsNullOrEmpty(name))
+                                data.EventNames.Add(name);
+                        }
+                    }
+                }
+
+                // Tags
+                var tagsUrl = $"{BaseUrl}/rest/v1/media_tag" +
+                              $"?media_asset_id=eq.{mediaAssetId}" +
+                              $"&tenant_id=eq.{tenantId}" +
+                              $"&select=tag_id";
+
+                var tagsResponse = await _httpClient.GetAsync(tagsUrl);
+                if (tagsResponse.IsSuccessStatusCode)
+                {
+                    var tagsBody = await tagsResponse.Content.ReadAsStringAsync();
+                    using var tagsDoc = JsonDocument.Parse(tagsBody);
+                    foreach (var t in tagsDoc.RootElement.EnumerateArray())
+                    {
+                        var tagId = t.GetProperty("tag_id").GetString();
+                        if (string.IsNullOrEmpty(tagId)) continue;
+
+                        var tagUrl = $"{BaseUrl}/rest/v1/tag" +
+                                     $"?tag_id=eq.{tagId}" +
+                                     $"&select=tag_name&limit=1";
+
+                        var tagResponse = await _httpClient.GetAsync(tagUrl);
+                        if (!tagResponse.IsSuccessStatusCode) continue;
+
+                        var tagBody = await tagResponse.Content.ReadAsStringAsync();
+                        using var tagDoc = JsonDocument.Parse(tagBody);
+                        if (tagDoc.RootElement.GetArrayLength() > 0)
+                        {
+                            var name = tagDoc.RootElement[0]
+                                .GetProperty("tag_name").GetString();
+                            if (!string.IsNullOrEmpty(name))
+                                data.TagNames.Add(name);
+                        }
+                    }
+                }
+
+                return data;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SupabaseService] GetMediaRenderDataAsync: {ex.Message}");
+                return null;
+            }
+        }
     }
 }
