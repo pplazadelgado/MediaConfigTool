@@ -44,10 +44,11 @@ namespace MediaConfigTool.Views
 
             // Metadata text
             DateText.Text = _data.CaptureTimestamp.HasValue
-                ? _data.CaptureTimestamp.Value.ToString("dd MMMM yyyy")
+                ? _data.CaptureTimestamp.Value.ToString("yyyy",
+                    System.Globalization.CultureInfo.InvariantCulture)
                 : string.Empty;
 
-            LocationText.Text = _data.LocationName ?? string.Empty;
+            
 
             EventText.Text = _data.EventNames.Count > 0
                 ? string.Join(", ", _data.EventNames)
