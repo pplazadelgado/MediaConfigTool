@@ -28,6 +28,31 @@ namespace MediaConfigTool
                 vm.OnSelectionChanged(lv.SelectedItems);
         }
 
+        private void LocationListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if(DataContext is MainViewModel vm && sender is ListBox lb)
+                vm.OnLocationSelectionChanged(lb.SelectedItems);
+        }
+
+        private void PersonListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if(DataContext is MainViewModel vm && sender is ListBox lb)
+                vm.OnPersonSelectionChanged(lb.SelectedItems);
+        }
+
+        private void EventListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (DataContext is MainViewModel vm && sender is ListBox lb)
+                vm.OnEventSelectionChanged(lb.SelectedItems);
+        }
+
+        private void TagListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if(DataContext is MainViewModel vm && sender is ListBox lb)
+                vm.OnTagSelectionChanged(lb.SelectedItems);
+        }
+            
+
         private void FolderTree_Expanded(object sender, RoutedEventArgs e)
         {
             if (e.OriginalSource is TreeViewItem item &&
@@ -82,30 +107,6 @@ namespace MediaConfigTool
         {
             base.OnMouseLeftButtonDown(e);
             DragMove();
-        }
-
-        private void LocationListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            if (DataContext is MainViewModel vm)
-                vm.OnLocationSelectionChanged(((ListBox)sender).SelectedItems);
-        }
-
-        private void PersonListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            if (DataContext is MainViewModel vm)
-                vm.OnPersonSelectionChanged(((ListBox)sender).SelectedItems);
-        }
-
-        private void EventListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            if (DataContext is MainViewModel vm)
-                vm.OnEventSelectionChanged(((ListBox)sender).SelectedItems);
-        }
-
-        private void TagListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            if (DataContext is MainViewModel vm)
-                vm.OnTagSelectionChanged(((ListBox)sender).SelectedItems);
         }
     }
 }

@@ -375,6 +375,27 @@ namespace MediaConfigTool.Services
             }
         }
 
+        public async Task<bool> DeleteAllMediaLocationsAsync(string mediaAssetId, string tenantId)
+        {
+            try
+            {
+                var url = $"{BaseUrl}/rest/v1/media_location" +
+                          $"?media_asset_id=eq.{mediaAssetId}" +
+                          $"&tenant_id=eq.{tenantId}";
+
+                var request = new HttpRequestMessage(HttpMethod.Delete, url);
+                request.Headers.Add("Prefer", "return=minimal");
+
+                var response = await _httpClient.SendAsync(request);
+                return response.IsSuccessStatusCode;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SupabaseService] DeleteAllMediaLocationsAsync: {ex.Message}");
+                return false;
+            }
+        }
+
         public async Task<bool> InsertMediaLocationAsync(string mediaAssetId, string locationId, string tenantId)
         {
             var now = DateTime.UtcNow.ToString("o");
@@ -1126,6 +1147,66 @@ namespace MediaConfigTool.Services
             }
         }
 
+        public async Task<bool> DeleteAllMediaPersonsAsync(string mediaAssetId, string tenantId)
+        {
+            try
+            {
+                var url = $"{BaseUrl}/rest/v1/media_person" +
+                          $"?media_asset_id=eq.{mediaAssetId}" +
+                          $"&tenant_id=eq.{tenantId}";
+
+                var request = new HttpRequestMessage(HttpMethod.Delete, url);
+                request.Headers.Add("Prefer", "return=minimal");
+                var response = await _httpClient.SendAsync(request);
+                return response.IsSuccessStatusCode;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SupabaseService] DeleteAllMediaPersonsAsync: {ex.Message}");
+                return false;
+            }
+        }
+
+        public async Task<bool> DeleteAllMediaEventsAsync(string mediaAssetId, string tenantId)
+        {
+            try
+            {
+                var url = $"{BaseUrl}/rest/v1/media_event" +
+                          $"?media_asset_id=eq.{mediaAssetId}" +
+                          $"&tenant_id=eq.{tenantId}";
+
+                var request = new HttpRequestMessage(HttpMethod.Delete, url);
+                request.Headers.Add("Prefer", "return=minimal");
+                var response = await _httpClient.SendAsync(request);
+                return response.IsSuccessStatusCode;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SupabaseService] DeleteAllMediaEventsAsync: {ex.Message}");
+                return false;
+            }
+        }
+
+        public async Task<bool> DeleteAllMediaTagsAsync(string mediaAssetId, string tenantId)
+        {
+            try
+            {
+                var url = $"{BaseUrl}/rest/v1/media_tag" +
+                          $"?media_asset_id=eq.{mediaAssetId}" +
+                          $"&tenant_id=eq.{tenantId}";
+
+                var request = new HttpRequestMessage(HttpMethod.Delete, url);
+                request.Headers.Add("Prefer", "return=minimal");
+                var response = await _httpClient.SendAsync(request);
+                return response.IsSuccessStatusCode;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SupabaseService] DeleteAllMediaTagsAsync: {ex.Message}");
+                return false;
+            }
+        }
+
         public async Task<bool> MediaPersonEsixtsAsync(string mediaAssetId, string personId)
         {
             try
@@ -1283,6 +1364,8 @@ namespace MediaConfigTool.Services
                                     var locEl = locDoc.RootElement[0];
                                     data.LocationName = locEl.TryGetProperty("location_name", out var ln)
                                         ? ln.GetString() : null;
+
+                                    System.Diagnostics.Debug.WriteLine($"[Render] location raw JSON: {locEl}");
 
                                     if (locEl.TryGetProperty("map_visual_asset_id", out var mapId)
                                         && mapId.ValueKind != JsonValueKind.Null)

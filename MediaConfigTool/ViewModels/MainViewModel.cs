@@ -196,12 +196,12 @@ namespace MediaConfigTool.ViewModels
                 async _ => await AssignLocationsAsync());
 
             AssignPersonCommand = new RelayCommand(
-    async _ => await AssignMetadataAsync(
-        "person",
-        SelectedPersons.Select(p => p.PersonId),
-        null,
-        (assetId, metaId) => _supabaseService.AssingPersonAsync(assetId, metaId, SelectedTenant!.TenantId),
-        (assetId, metaId) => _supabaseService.MediaPersonEsixtsAsync(assetId, metaId)));
+                async _ => await AssignMetadataAsync(
+                    "person",
+                    SelectedPersons.Select(p => p.PersonId),
+                    null,
+                    (assetId, metaId) => _supabaseService.AssingPersonAsync(assetId, metaId, SelectedTenant!.TenantId),
+                    deleteAllFunc: (assetId, tenantId) => _supabaseService.DeleteAllMediaPersonsAsync(assetId, tenantId)));
 
             AssignEventCommand = new RelayCommand(
                 async _ => await AssignMetadataAsync(
@@ -209,7 +209,7 @@ namespace MediaConfigTool.ViewModels
                     SelectedEvents.Select(e => e.EventId),
                     null,
                     (assetId, metaId) => _supabaseService.AssingEventAsync(assetId, metaId, SelectedTenant!.TenantId),
-                    (assetId, metaId) => _supabaseService.MediaEventExistsAsync(assetId, metaId)));
+                    deleteAllFunc: (assetId, tenantId) => _supabaseService.DeleteAllMediaEventsAsync(assetId, tenantId)));
 
             AssignTagCommand = new RelayCommand(
                 async _ => await AssignMetadataAsync(
@@ -217,7 +217,7 @@ namespace MediaConfigTool.ViewModels
                     SelectedTags.Select(t => t.TagId),
                     null,
                     (assetId, metaId) => _supabaseService.AssingTagAsync(assetId, metaId, SelectedTenant!.TenantId),
-                    (assetId, metaId) => _supabaseService.MediaTagExistsAsync(assetId, metaId)));
+                    deleteAllFunc: (assetId, tenantId) => _supabaseService.DeleteAllMediaTagsAsync(assetId, tenantId)));
 
             CreateLocationCommand = new RelayCommand(
                 async _ => await CreateLocationAsync());
@@ -597,17 +597,19 @@ namespace MediaConfigTool.ViewModels
             StatusIsWarning = false;
             StatusMessage = $"Assigning {SelectedLocations.Count} location(s) to {targets.Count} image(s)...";
 
+            // Replace behavior: delete existing locations first, then insert the selected ones
+            foreach (var file in targets)
+            {
+                await _supabaseService.DeleteAllMediaLocationsAsync(
+                    file.MediaAssetId!, SelectedTenant!.TenantId);
+            }
+
             foreach (var location in SelectedLocations)
             {
                 foreach (var file in targets)
                 {
                     try
                     {
-                        var exists = await _supabaseService.MediaLocationExistsAsync(
-                            file.MediaAssetId!, location.LocationId);
-
-                        if (exists) { skipped++; continue; }
-
                         var ok = await _supabaseService.InsertMediaLocationAsync(
                             file.MediaAssetId!, location.LocationId, SelectedTenant!.TenantId);
 
@@ -638,7 +640,8 @@ namespace MediaConfigTool.ViewModels
     IEnumerable<string> metadataIds,
     string? labelForStatus,
     Func<string, string, Task<bool>> assignFunc,
-    Func<string, string, Task<bool>>? existsFunc = null)
+    Func<string, string, Task<bool>>? existsFunc = null,
+    Func<string, string, Task<bool>>? deleteAllFunc = null)
         {
             if (!metadataIds.Any())
             {
@@ -656,12 +659,18 @@ namespace MediaConfigTool.ViewModels
             }
 
             int assigned = 0;
-            int skipped = 0;
             int failed = 0;
             string? lastError = null;
 
             StatusIsWarning = false;
             StatusMessage = $"Assigning {metadataType} to {targets.Count} image(s)...";
+
+            // Replace behavior: delete existing entries before inserting new ones
+            if (deleteAllFunc != null)
+            {
+                foreach (var file in targets)
+                    await deleteAllFunc(file.MediaAssetId!, SelectedTenant!.TenantId);
+            }
 
             foreach (var metadataId in metadataIds)
             {
@@ -669,12 +678,6 @@ namespace MediaConfigTool.ViewModels
                 {
                     try
                     {
-                        if (existsFunc != null)
-                        {
-                            var exists = await existsFunc(file.MediaAssetId!, metadataId);
-                            if (exists) { skipped++; continue; }
-                        }
-
                         var ok = await assignFunc(file.MediaAssetId!, metadataId);
                         if (ok) assigned++;
                         else failed++;
@@ -692,7 +695,6 @@ namespace MediaConfigTool.ViewModels
             StatusIsWarning = failed > 0;
             var parts = new List<string>();
             if (assigned > 0) parts.Add($"{assigned} assigned");
-            if (skipped > 0) parts.Add($"{skipped} skipped");
             if (failed > 0) parts.Add($"{failed} failed");
             StatusMessage = $"{metadataType}: {string.Join(", ", parts)}"
                 + (lastError != null ? $" — {lastError}" : ".");
@@ -1341,13 +1343,7 @@ namespace MediaConfigTool.ViewModels
                 return;
             }
 
-            if (MediaFiles.Any())
-            {
-                StatusIsWarning = true;
-                StatusMessage = "The current folder contains gallery images. " +
-                                "Select a folder with map images only using Browse Folder, then click Load Map.";
-                return;
-            }
+            
 
             var supportedExtensions = new[] { ".jpg", ".jpeg", ".png" };
             var files = Directory.GetFiles(SelectedFolder)
@@ -1493,7 +1489,7 @@ namespace MediaConfigTool.ViewModels
                 SelectedMedia.FullPath,
                 SelectedMedia.CaptureTimestamp);
 
-            if (renderData != null)
+            if (renderData == null)
             {
                 StatusIsWarning = true ;
                 StatusMessage = "Could not load metadata for render.";
@@ -1501,6 +1497,8 @@ namespace MediaConfigTool.ViewModels
             }
 
             StatusMessage = $"Metadata loades for: {SelectedMedia.FileName}";
+            var preview = new MediaConfigTool.Views.PreviewWindow(renderData);
+            preview.Show();
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
