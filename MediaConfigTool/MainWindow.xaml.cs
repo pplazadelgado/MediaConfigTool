@@ -14,6 +14,14 @@ namespace MediaConfigTool
             InitializeComponent();
             AppPathsService.EnsureFoldersExist();
             DataContext = new MainViewModel();
+
+            if (DataContext is MainViewModel vm)
+            {
+                vm.HighlightedLocationIds.CollectionChanged += (_, _) => ApplyLocationHighlights(vm);
+                vm.HighlightedPersonIds.CollectionChanged += (_, _) => ApplyPersonHighlights(vm);
+                vm.HighlightedEventIds.CollectionChanged += (_, _) => ApplyEventHighlights(vm);
+                vm.HighlightedTagIds.CollectionChanged += (_, _) => ApplyTagHighlights(vm);
+            }
         }
 
         private async void Window_Loaded(object sender, RoutedEventArgs e)
@@ -107,6 +115,46 @@ namespace MediaConfigTool
         {
             base.OnMouseLeftButtonDown(e);
             DragMove();
+        }
+
+        private void ApplyLocationHighlights(MainViewModel vm)
+        {
+            LocationListBox.SelectionChanged -= LocationListBox_SelectionChanged;
+            LocationListBox.SelectedItems.Clear();
+            foreach (var item in LocationListBox.Items)
+                if (item is Location loc && vm.HighlightedLocationIds.Contains(loc.LocationId))
+                    LocationListBox.SelectedItems.Add(item);
+            LocationListBox.SelectionChanged += LocationListBox_SelectionChanged;
+        }
+
+        private void ApplyPersonHighlights(MainViewModel vm)
+        {
+            PersonListBox.SelectionChanged -= PersonListBox_SelectionChanged;
+            PersonListBox.SelectedItems.Clear();
+            foreach (var item in PersonListBox.Items)
+                if (item is Person p && vm.HighlightedPersonIds.Contains(p.PersonId))
+                    PersonListBox.SelectedItems.Add(item);
+            PersonListBox.SelectionChanged += PersonListBox_SelectionChanged;
+        }
+
+        private void ApplyEventHighlights(MainViewModel vm)
+        {
+            EventListBox.SelectionChanged -= EventListBox_SelectionChanged;
+            EventListBox.SelectedItems.Clear();
+            foreach (var item in EventListBox.Items)
+                if (item is Event e && vm.HighlightedEventIds.Contains(e.EventId))
+                    EventListBox.SelectedItems.Add(item);
+            EventListBox.SelectionChanged += EventListBox_SelectionChanged;
+        }
+
+        private void ApplyTagHighlights(MainViewModel vm)
+        {
+            TagListBox.SelectionChanged -= TagListBox_SelectionChanged;
+            TagListBox.SelectedItems.Clear();
+            foreach (var item in TagListBox.Items)
+                if (item is Tag t && vm.HighlightedTagIds.Contains(t.TagId))
+                    TagListBox.SelectedItems.Add(item);
+            TagListBox.SelectionChanged += TagListBox_SelectionChanged;
         }
     }
 }

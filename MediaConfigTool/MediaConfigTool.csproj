@@ -14,10 +14,18 @@
 	<ItemGroup>
 	  <None Remove="Narrin _Studio _Opening _Screen.png" />
 	  <None Remove="Narrin.ico" />
+	  <None Remove="Views\calendar.png" />
+	  <None Remove="Views\event.png" />
+	  <None Remove="Views\person.png" />
+	  <None Remove="Views\tag.png" />
 	</ItemGroup>
 
 	<ItemGroup>
 	  <Resource Include="Narrin.ico" />
+	  <Resource Include="Views\calendar.png" />
+	  <Resource Include="Views\event.png" />
+	  <Resource Include="Views\person.png" />
+	  <Resource Include="Views\tag.png" />
 	</ItemGroup>
 
 	<ItemGroup>

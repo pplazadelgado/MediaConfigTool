@@ -21,8 +21,10 @@ namespace MediaConfigTool.Services
     public class SupabaseService
     {
         private readonly HttpClient _httpClient;
+        public string BaseUrl => "https://neuopqphtwylcgiyczox.supabase.co";
+        public HttpClient HttpClient => _httpClient;
 
-        private const string BaseUrl = "https://neuopqphtwylcgiyczox.supabase.co";
+        
         private const string ApiKey = "sb_publishable_KG_nyOf3csC-ViPolVrc1w_Jyk2VlI2";
 
         public SupabaseService()
@@ -1502,6 +1504,134 @@ namespace MediaConfigTool.Services
             {
                 System.Diagnostics.Debug.WriteLine($"[SupabaseService] GetMediaRenderDataAsync: {ex.Message}");
                 return null;
+            }
+        }
+
+        public async Task<HashSet<string>> GetAssignedLocationIdsAsync(string mediaAssetId)
+        {
+            var result = new HashSet<string>();
+            try
+            {
+                var url = $"{BaseUrl}/rest/v1/media_location" +
+                          $"?media_asset_id=eq.{mediaAssetId}" +
+                          $"&select=location_id";
+                var response = await _httpClient.GetAsync(url);
+                if (!response.IsSuccessStatusCode) return result;
+                var body = await response.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(body);
+                foreach (var el in doc.RootElement.EnumerateArray())
+                    if (el.TryGetProperty("location_id", out var id))
+                        result.Add(id.GetString()!);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SupabaseService] GetAssignedLocationIdsAsync: {ex.Message}");
+            }
+            return result;
+        }
+
+        public async Task<HashSet<string>> GetAssignedPersonIdsAsync(string mediaAssetId)
+        {
+            var result = new HashSet<string>();
+            try
+            {
+                var url = $"{BaseUrl}/rest/v1/media_person" +
+                          $"?media_asset_id=eq.{mediaAssetId}" +
+                          $"&select=person_id";
+                var response = await _httpClient.GetAsync(url);
+                if (!response.IsSuccessStatusCode) return result;
+                var body = await response.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(body);
+                foreach (var el in doc.RootElement.EnumerateArray())
+                    if (el.TryGetProperty("person_id", out var id))
+                        result.Add(id.GetString()!);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SupabaseService] GetAssignedPersonIdsAsync: {ex.Message}");
+            }
+            return result;
+        }
+
+        public async Task<HashSet<string>> GetAssignedEventIdsAsync(string mediaAssetId)
+        {
+            var result = new HashSet<string>();
+            try
+            {
+                var url = $"{BaseUrl}/rest/v1/media_event" +
+                          $"?media_asset_id=eq.{mediaAssetId}" +
+                          $"&select=event_id";
+                var response = await _httpClient.GetAsync(url);
+                if (!response.IsSuccessStatusCode) return result;
+                var body = await response.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(body);
+                foreach (var el in doc.RootElement.EnumerateArray())
+                    if (el.TryGetProperty("event_id", out var id))
+                        result.Add(id.GetString()!);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SupabaseService] GetAssignedEventIdsAsync: {ex.Message}");
+            }
+            return result;
+        }
+
+        public async Task<HashSet<string>> GetAssignedTagIdsAsync(string mediaAssetId)
+        {
+            var result = new HashSet<string>();
+            try
+            {
+                var url = $"{BaseUrl}/rest/v1/media_tag" +
+                          $"?media_asset_id=eq.{mediaAssetId}" +
+                          $"&select=tag_id";
+                var response = await _httpClient.GetAsync(url);
+                if (!response.IsSuccessStatusCode) return result;
+                var body = await response.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(body);
+                foreach (var el in doc.RootElement.EnumerateArray())
+                    if (el.TryGetProperty("tag_id", out var id))
+                        result.Add(id.GetString()!);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SupabaseService] GetAssignedTagIdsAsync: {ex.Message}");
+            }
+            return result;
+        }
+
+        public async Task<List<int>> GetImportedYearAsync(string tenantId)
+        {
+            try
+            {
+                var url = $"{BaseUrl}/rest/v1/media_asset" +
+                  $"?tenant_id=eq.{tenantId}" +
+                  $"&select=capture_timestamp" +
+                  $"&capture_timestamp=not.is.null";
+
+                var response = await _httpClient.GetAsync(url);
+                if (!response.IsSuccessStatusCode) return new List<int>();
+
+                var body = await response.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(body);
+
+                var years = new HashSet<int>();
+                foreach(var el in doc.RootElement.EnumerateArray())
+                {
+                    if(el.TryGetProperty("capture_timestamp", out var ts))
+                    {
+                        var str = ts.GetString();
+                        if (!string.IsNullOrEmpty(str) &&
+                            DateTimeOffset.TryParse(str, out var dt))
+                            years.Add(dt.Year);
+                    }
+                }
+
+                return years.OrderByDescending(y => y).ToList();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SupabaseService] GetImportedYearsAsync: {ex.Message}");
+                return new List<int>();
             }
         }
     }

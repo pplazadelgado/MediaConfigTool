@@ -372,11 +372,22 @@
                     Command="{Binding ImportCommand}"
                     Margin="8,0,0,0"/>
 
-                <Button Content="Render Image"
+                <Button Content="Render Landscape"
                     Style="{StaticResource PrimaryButton}"
                     Command="{Binding RenderImageCommand}"
                     IsEnabled="{Binding CanRender}"
-                    Margin="8,0,0,0"/>      
+                    Margin="8,0,0,0"/>
+
+                <Button Content="Render Portrait"
+                    Style="{StaticResource PrimaryButton}"
+                    Command="{Binding RenderPortraitCommand}"
+                    IsEnabled="{Binding CanRender}"
+                    Margin="8,0,0,0"/>
+
+                <Button Content="Create Slideshow"
+                    Style="{StaticResource PrimaryButton}"
+                    Command="{Binding OpenSlideshowCommand}"
+                    Margin="8,0,0,0"/>
 
                 <Button Content="Cancel"
                     Background="#C0392B"
@@ -477,7 +488,7 @@
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="{Binding FolderPanelWidth}"/>
                 <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="220"/>
+                <ColumnDefinition Width="240"/>
             </Grid.ColumnDefinitions>
 
             <!-- Panel lateral de carpetas -->
@@ -545,25 +556,24 @@
                     BorderThickness="1,0,0,0"
                     Padding="16">
                 <ScrollViewer VerticalScrollBarVisibility="Auto"
-                                 HorizontalScrollBarVisibility="Disabled"
-                               CanContentScroll="False"
-                                Padding="0,0,10,0">
+                              HorizontalScrollBarVisibility="Disabled"
+                              CanContentScroll="False">
                     <ScrollViewer.Resources>
                         <Style TargetType="ScrollBar" BasedOn="{StaticResource ThinScrollBar}"/>
                     </ScrollViewer.Resources>
-                    <StackPanel>
+                    <StackPanel Margin="0,0,8,0">
 
                         <TextBlock Text="Selection"
-                   Foreground="#4A90D9"
-                   FontSize="13"
-                   FontWeight="SemiBold"
-                   Margin="0,0,0,16"/>
+                           Foreground="#4A90D9"
+                           FontSize="13"
+                           FontWeight="SemiBold"
+                           Margin="0,0,0,16"/>      
 
                         <!-- Sin selección -->
                         <TextBlock Text="No image selected."
-                   Foreground="#666666"
-                   FontSize="12"
-                   TextWrapping="Wrap">
+                           Foreground="#666666"
+                           FontSize="12"
+                           TextWrapping="Wrap">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock">
                                     <Setter Property="Visibility" Value="Collapsed"/>
@@ -590,33 +600,33 @@
                             </StackPanel.Style>
 
                             <TextBlock Text="File"
-                       Foreground="#666666"
-                       FontSize="10"
-                       Margin="0,0,0,4"/>
+                               Foreground="#666666"
+                               FontSize="10"
+                               Margin="0,0,0,4"/>
                             <TextBlock Text="{Binding SelectedFile.FileName}"
-                       Foreground="#F0F0F0"
-                       FontSize="12"
-                       TextWrapping="Wrap"
-                       Margin="0,0,0,12"/>
+                               Foreground="#F0F0F0"
+                               FontSize="12"
+                               TextWrapping="Wrap"
+                               Margin="0,0,0,12"/>
 
                             <TextBlock Text="Relative path"
-                       Foreground="#666666"
-                       FontSize="10"
-                       Margin="0,0,0,4"/>
+                               Foreground="#666666"
+                               FontSize="10"
+                               Margin="0,0,0,4"/>
                             <TextBlock Text="{Binding SelectedFile.RelativePath}"
-                       Foreground="#F0F0F0"
-                       FontSize="12"
-                       TextWrapping="Wrap"
-                       Margin="0,0,0,12"/>
+                               Foreground="#F0F0F0"
+                               FontSize="12"
+                               TextWrapping="Wrap"
+                               Margin="0,0,0,12"/>
 
                             <TextBlock Text="Capture date"
-                       Foreground="#666666"
-                       FontSize="10"
-                       Margin="0,0,0,4"/>
+                               Foreground="#666666"
+                               FontSize="10"
+                               Margin="0,0,0,4"/>
                             <TextBlock Text="{Binding SelectedFile.CaptureTimestamp, StringFormat={}{0:dd/MM/yyyy HH:mm}}"
-                       Foreground="#F0F0F0"
-                       FontSize="12"
-                       Margin="0,0,0,12"/>
+                               Foreground="#F0F0F0"
+                               FontSize="12"
+                               Margin="0,0,0,12"/>
                         </StackPanel>
 
 

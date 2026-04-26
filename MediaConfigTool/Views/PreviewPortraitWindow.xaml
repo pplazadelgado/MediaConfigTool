@@ -1,0 +1,206 @@
+﻿<Window x:Class="MediaConfigTool.Views.PreviewPortraitWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Render Preview Portrait"
+        Width="620" Height="1000"
+        Background="#1E1E1E"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize">
+
+    <DockPanel Background="#1E1E1E">
+
+        <!-- TOP BAR -->
+        <Border DockPanel.Dock="Top"
+                Background="#2A2A2A"
+                BorderBrush="#444444"
+                BorderThickness="0,0,0,1"
+                Padding="16,10">
+            <DockPanel>
+
+                <Button Content="✕"
+                        DockPanel.Dock="Right"
+                        Click="CloseButton_Click"
+                        Background="Transparent"
+                        Foreground="#999999"
+                        BorderThickness="0"
+                        Padding="8,2"
+                        FontSize="13"
+                        Cursor="Hand"/>
+
+                <Button Content="Save as PNG"
+                        DockPanel.Dock="Right"
+                        Click="SaveButton_Click"
+                        Background="#4A90D9"
+                        Foreground="White"
+                        BorderThickness="0"
+                        Padding="14,7"
+                        FontSize="13"
+                        FontWeight="SemiBold"
+                        Cursor="Hand"
+                        Margin="0,0,8,0"/>
+
+                <TextBlock Text="Render Preview Portrait"
+                           Foreground="#4A90D9"
+                           FontSize="16"
+                           FontWeight="Bold"
+                           VerticalAlignment="Center"/>
+            </DockPanel>
+        </Border>
+
+        <!-- PREVIEW -->
+        <Viewbox Stretch="Uniform"
+                 HorizontalAlignment="Center"
+                 VerticalAlignment="Center">
+
+            <Grid x:Name="RenderCanvas"
+                  Width="1200"
+                  Height="1920"
+                  Background="#0D1B2A">
+
+                <!-- FILAS -->
+                <Grid.RowDefinitions>
+                    <!-- FOTO -->
+                    <RowDefinition Height="*"/>
+
+                    <!-- FOOTER -->
+                    <RowDefinition Height="250"/>
+                </Grid.RowDefinitions>
+
+                <!-- MAIN IMAGE -->
+                <Border Grid.Row="0"
+                        Margin="24"
+                        Background="Black">
+                    <Image x:Name="MainImage"
+                           Stretch="UniformToFill"/>
+                </Border>
+
+                <!-- FOOTER -->
+                <Grid Grid.Row="1"
+                      Margin="24,0,24,24">
+
+                    <Grid.ColumnDefinitions>
+                        <!-- MAPA -->
+                        <ColumnDefinition Width="420"/>
+
+                        <!-- METADATA -->
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- MAP -->
+                    <Border Grid.Column="0"
+                            Background="#1A2A3A"
+                            CornerRadius="12"
+                            Margin="0,0,20,0">
+                        <Image x:Name="MapImage"
+                               Stretch="UniformToFill"/>
+                    </Border>
+
+                    <!-- METADATA (4 columnas) -->
+                    <Grid Grid.Column="1">
+
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- DATE -->
+                        <StackPanel Grid.Column="0"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center">
+
+                            <Image Source="/Views/calendar.png"
+                                   Width="100"
+                                   Height="100"/>        
+
+                            <TextBlock Foreground="#AAAAAA"
+                                       FontSize="16"
+                                       HorizontalAlignment="Center"
+                                       Margin="0,8,0,4"/>
+
+                            <TextBlock x:Name="DateText"
+                                       Foreground="White"
+                                       FontFamily="Georgia"
+                                       FontSize="28"
+                                       FontWeight="SemiBold"
+                                       HorizontalAlignment="Center"/>
+                        </StackPanel>
+
+                        <!-- EVENT -->
+                        <StackPanel Grid.Column="1"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center">
+
+                            <Image Source="/Views/event.png"
+                                   Width="100"
+                                   Height="100"/>
+
+                            <TextBlock Foreground="#AAAAAA"
+                                       FontSize="16"
+                                       HorizontalAlignment="Center"
+                                       Margin="0,8,0,4"/>
+
+                            <TextBlock x:Name="EventText"
+                                       Foreground="White"
+                                       FontFamily="Georgia"
+                                       FontSize="28"
+                                       FontWeight="SemiBold"
+                                       HorizontalAlignment="Center"/>
+                        </StackPanel>
+
+                        <!-- PERSON -->
+                        <StackPanel Grid.Column="2"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center">
+
+                            <Image Source="/Views/person.png"
+                               Width="100"
+                               Height="100"/>
+
+                            <TextBlock Foreground="#AAAAAA"
+                                       FontSize="16"
+                                       HorizontalAlignment="Center"
+                                       Margin="0,8,0,4"/>
+
+                            <TextBlock x:Name="PersonText"
+                                       Foreground="White"
+                                       FontFamily="Georgia"
+                                       FontSize="28"
+                                       FontWeight="SemiBold"
+                                       HorizontalAlignment="Center"
+                                       TextAlignment="Center"/>
+                        </StackPanel>
+
+                        <!-- TAG -->
+                        <StackPanel Grid.Column="3"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center">
+
+                            <Image Source="/Views/tag.png"
+                               Width="100"
+                               Height="100"/>    
+
+                            <TextBlock Foreground="#AAAAAA"
+                                       FontSize="16"
+                                       HorizontalAlignment="Center"
+                                       Margin="0,8,0,4"/>
+
+                            <TextBlock x:Name="TagText"
+                                       Foreground="White"
+                                       FontFamily="Georgia"
+                                       FontSize="28"
+                                       FontWeight="SemiBold"
+                                       HorizontalAlignment="Center"/>
+                        </StackPanel>
+
+                    </Grid>
+                </Grid>
+
+            </Grid>
+        </Viewbox>
+
+    </DockPanel>
+</Window>

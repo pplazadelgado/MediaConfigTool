@@ -149,6 +149,11 @@ namespace MediaConfigTool.ViewModels
         public ObservableCollection<Person> SelectedPersons { get; } = new();
         public ObservableCollection<Event> SelectedEvents { get; } = new();
         public ObservableCollection<Tag> SelectedTags { get; } = new();
+        // IDs de metadata asignados a la selección actual (para resaltar en los ListBox)
+        public ObservableCollection<string> HighlightedLocationIds { get; } = new();
+        public ObservableCollection<string> HighlightedPersonIds { get; } = new();
+        public ObservableCollection<string> HighlightedEventIds { get; } = new();
+        public ObservableCollection<string> HighlightedTagIds { get; } = new();
 
         public ICommand BrowseFolderCommand { get; }
         public ICommand CloseFolderPanelCommand { get; }
@@ -174,6 +179,8 @@ namespace MediaConfigTool.ViewModels
         public ICommand LoadMapCommand { get; }
         public ICommand AssignMapCommand { get; }
         public ICommand RenderImageCommand { get; }
+        public ICommand RenderPortraitCommand { get; }
+        public ICommand OpenSlideshowCommand {  get; }
 
         public MainViewModel()
         {
@@ -256,6 +263,10 @@ namespace MediaConfigTool.ViewModels
                 async _ => await AssignMapAsync());
             RenderImageCommand = new RelayCommand(
                 _ => RenderImage());
+            RenderPortraitCommand = new RelayCommand(
+                _ => RenderPortrait());
+            OpenSlideshowCommand = new RelayCommand(
+                _ => OpenSlideshow());
         }
 
         public async Task LoadTenantsAsync()
@@ -425,6 +436,8 @@ namespace MediaConfigTool.ViewModels
             OnPropertyChanged(nameof(SelectedNotImportedCount));
             OnPropertyChanged(nameof(SelectedImportedCount));
             OnPropertyChanged(nameof(SelectedNotImportedCount));
+
+            _ = RefreshMetadataHighlightsAsync();
         }
 
         public void OnLocationSelectionChanged(IList selectedItems)
@@ -462,6 +475,80 @@ namespace MediaConfigTool.ViewModels
                 if (item is Tag t) SelectedTags.Add(t);
 
             SelectedTag = SelectedTags.FirstOrDefault();
+        }
+
+        // Calcula qué metadata tienen en común las imágenes seleccionadas
+        // y actualiza las colecciones Highlighted para que el UI las resalte
+        public async Task RefreshMetadataHighlightsAsync()
+        {
+            // Limpiar siempre primero
+            HighlightedLocationIds.Clear();
+            HighlightedPersonIds.Clear();
+            HighlightedEventIds.Clear();
+            HighlightedTagIds.Clear();
+
+            // Solo imágenes importadas de la selección actual
+            var targets = SelectedMediaFiles
+                .Where(f => f.IsImported && f.MediaAssetId != null)
+                .ToList();
+
+            // Sin selección importada → nada que resaltar
+            if (targets.Count == 0) return;
+
+            // Límite para el POC
+            if (targets.Count > 20)
+            {
+                System.Diagnostics.Debug.WriteLine("[MainViewModel] RefreshMetadataHighlights: too many images, skipping.");
+                return;
+            }
+
+            try
+            {
+                // Lanzar todas las consultas en paralelo para cada imagen
+                var locationTasks = targets.Select(f =>
+                    _supabaseService.GetAssignedLocationIdsAsync(f.MediaAssetId!));
+                var personTasks = targets.Select(f =>
+                    _supabaseService.GetAssignedPersonIdsAsync(f.MediaAssetId!));
+                var eventTasks = targets.Select(f =>
+                    _supabaseService.GetAssignedEventIdsAsync(f.MediaAssetId!));
+                var tagTasks = targets.Select(f =>
+                    _supabaseService.GetAssignedTagIdsAsync(f.MediaAssetId!));
+
+                var allLocationSets = await Task.WhenAll(locationTasks);
+                var allPersonSets = await Task.WhenAll(personTasks);
+                var allEventSets = await Task.WhenAll(eventTasks);
+                var allTagSets = await Task.WhenAll(tagTasks);
+
+                // Intersección: solo IDs que tienen TODAS las imágenes
+                var commonLocations = allLocationSets
+                    .Skip(1).Aggregate(
+                        new HashSet<string>(allLocationSets.First()),
+                        (acc, set) => { acc.IntersectWith(set); return acc; });
+
+                var commonPersons = allPersonSets
+                    .Skip(1).Aggregate(
+                        new HashSet<string>(allPersonSets.First()),
+                        (acc, set) => { acc.IntersectWith(set); return acc; });
+
+                var commonEvents = allEventSets
+                    .Skip(1).Aggregate(
+                        new HashSet<string>(allEventSets.First()),
+                        (acc, set) => { acc.IntersectWith(set); return acc; });
+
+                var commonTags = allTagSets
+                    .Skip(1).Aggregate(
+                        new HashSet<string>(allTagSets.First()),
+                        (acc, set) => { acc.IntersectWith(set); return acc; });
+
+                foreach (var id in commonLocations) HighlightedLocationIds.Add(id);
+                foreach (var id in commonPersons) HighlightedPersonIds.Add(id);
+                foreach (var id in commonEvents) HighlightedEventIds.Add(id);
+                foreach (var id in commonTags) HighlightedTagIds.Add(id);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[MainViewModel] RefreshMetadataHighlightsAsync: {ex.Message}");
+            }
         }
 
         private async Task CheckImportedStatusAsync()
@@ -1499,6 +1586,45 @@ namespace MediaConfigTool.ViewModels
             StatusMessage = $"Metadata loades for: {SelectedMedia.FileName}";
             var preview = new MediaConfigTool.Views.PreviewWindow(renderData);
             preview.Show();
+        }
+
+        private async void RenderPortrait()
+        {
+            if (SelectedMedia?.MediaAssetId == null || SelectedTenant == null) return;
+
+            StatusMessage = "Loading metadata...";
+            StatusIsWarning = false;
+
+            var renderData = await _supabaseService.GetMediaRenderDataAsync(
+                SelectedMedia.MediaAssetId,
+                SelectedTenant.TenantId,
+                SelectedMedia.FullPath,
+                SelectedMedia.CaptureTimestamp);
+
+            if(renderData == null)
+            {
+                StatusIsWarning = true;
+                StatusMessage = "Could not load metadata for render";
+                return;
+            }
+
+            StatusMessage = $"Metadata loaded for: {SelectedMedia.FileName}";
+            var preview = new MediaConfigTool.Views.PreviewPortraitWindow(renderData);
+            preview.Show();
+        }
+
+        private void OpenSlideshow()
+        {
+            if(SelectedTenant == null)
+            {
+                StatusIsWarning = true;
+                StatusMessage = "Select a tenant first";
+                return;
+            }
+
+            var window = new MediaConfigTool.Views.SlideshowWindow(
+                _supabaseService, SelectedTenant.TenantId);
+            window.Show();
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
